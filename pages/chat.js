@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { auth, db } from "../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   addDoc,
@@ -7,38 +8,64 @@ import {
   onSnapshot,
   where
 } from "firebase/firestore";
+import { useRouter } from "next/router";
 
 export default function Chat() {
+  const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const bottomRef = useRef();
+  const router = useRouter();
 
-  const myUid = auth.currentUser.uid;
+  // 🔐 AUTH SAFE CHECK (FIXES BUILD ERROR)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, u => {
+      if (!u) {
+        router.replace("/");
+      } else {
+        setUser(u);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // ⏳ Wait for auth
+  if (!user) {
+    return <div style={{padding:40}}>Loading…</div>;
+  }
+
+  const myUid = user.uid;
 
   // Load contacts
   useEffect(() => {
     const q = query(collection(db, "users"));
     return onSnapshot(q, snap => {
-      setUsers(snap.docs.map(d => d.data()).filter(u => u.uid !== myUid));
+      setUsers(
+        snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
+      );
     });
-  }, []);
+  }, [myUid]);
 
   // Load messages
   useEffect(() => {
     if (!activeUser) return;
 
     const roomId = [myUid, activeUser.uid].sort().join("_");
-    const q = query(collection(db, "messages"), where("room", "==", roomId));
+    const q = query(
+      collection(db, "messages"),
+      where("room", "==", roomId)
+    );
 
     return onSnapshot(q, snap => {
-      const msgs = snap.docs.map(d => d.data())
-        .sort((a,b)=>a.time-b.time);
+      const msgs = snap.docs
+        .map(d => d.data())
+        .sort((a, b) => a.time - b.time);
       setMessages(msgs);
-      setTimeout(()=>bottomRef.current?.scrollIntoView(),50);
+      setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
     });
-  }, [activeUser]);
+  }, [activeUser, myUid]);
 
   async function send() {
     if (!text || !activeUser) return;
@@ -62,26 +89,29 @@ export default function Chat() {
       {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
-        {users.map(u=>(
+        {users.map(u => (
           <div
             key={u.uid}
-            className={`contact ${activeUser?.uid===u.uid?'active':''}`}
-            onClick={()=>setActiveUser(u)}
+            className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
+            onClick={() => setActiveUser(u)}
           >
             {u.email}
           </div>
         ))}
       </div>
 
-      {/* CHAT */}
+      {/* CHAT AREA */}
       <div className="chatArea">
         {!activeUser ? (
           <div className="empty">Select a contact</div>
         ) : (
           <>
             <div className="msgs">
-              {messages.map((m,i)=>(
-                <div key={i} className={`bubble ${m.from===myUid?'me':''}`}>
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`bubble ${m.from === myUid ? "me" : ""}`}
+                >
                   {m.text}
                 </div>
               ))}
@@ -91,7 +121,7 @@ export default function Chat() {
             <div className="bar">
               <input
                 value={text}
-                onChange={e=>setText(e.target.value)}
+                onChange={e => setText(e.target.value)}
                 placeholder="Type message…"
               />
               <button onClick={send}>Send</button>
