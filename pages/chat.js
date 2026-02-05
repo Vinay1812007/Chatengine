@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection,
   addDoc,
@@ -13,7 +13,6 @@ import { useRouter } from "next/router";
 export default function Chat() {
   const router = useRouter();
 
-  // STATE
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [contacts, setContacts] = useState([]);
@@ -45,7 +44,9 @@ export default function Chat() {
     const q = query(collection(db, "users"));
     const unsub = onSnapshot(q, (snap) => {
       setContacts(
-        snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
+        snap.docs
+          .map(d => d.data())
+          .filter(u => u.uid !== myUid)
       );
     });
 
@@ -72,7 +73,6 @@ export default function Chat() {
     return () => unsub();
   }, [authReady, myUid, activeUser]);
 
-  /* SEND */
   async function send() {
     if (!text.trim() || !activeUser || !myUid) return;
 
@@ -89,11 +89,15 @@ export default function Chat() {
     setText("");
   }
 
-  /* RENDER */
+  async function logout() {
+    await signOut(auth);
+    router.replace("/");
+  }
+
   if (!authReady) {
     return (
       <div style={{ padding: 40, color: "white" }}>
-        Loading ChatEngine…
+        Loading…
       </div>
     );
   }
@@ -116,6 +120,23 @@ export default function Chat() {
 
       {/* CHAT */}
       <div className="chatArea">
+        {/* HEADER */}
+        <div style={{
+          padding: "10px 16px",
+          borderBottom: "1px solid #1e293b",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>{user?.email}</div>
+          <button
+            style={{ width: "auto", padding: "6px 12px" }}
+            onClick={logout}
+          >
+            Logout
+          </button>
+        </div>
+
         {!activeUser ? (
           <div className="empty">Select a contact</div>
         ) : (
