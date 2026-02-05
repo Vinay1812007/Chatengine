@@ -225,3 +225,32 @@ button.google {
   margin: auto;
   opacity: 0.6;
 }
+/* CALL BUTTONS */
+.callBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.callBtns button {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  cursor: pointer;
+}
+
+/* MESSAGE ANIMATION */
+.animate {
+  animation: popIn 0.25s ease-out;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
