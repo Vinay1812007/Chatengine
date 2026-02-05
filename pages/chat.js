@@ -11,108 +11,110 @@ import {
 import { useRouter } from "next/router";
 
 export default function Chat() {
-  const [user, setUser] = useState(undefined);
+  const router = useRouter();
+
+  // STATE (always declared)
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [error, setError] = useState(null);
-  const bottomRef = useRef(null);
-  const router = useRouter();
 
-  /* AUTH */
+  const bottomRef = useRef(null);
+
+  /* =========================
+     AUTH (ALWAYS RUNS)
+  ==========================*/
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) router.replace("/");
-      else setUser(u);
+      if (!u) {
+        router.replace("/");
+      } else {
+        setUser(u);
+      }
+      setAuthReady(true);
     });
+
     return () => unsub();
   }, [router]);
 
-  if (user === undefined) {
-    return <div style={{ padding: 40, color: "white" }}>Loading…</div>;
-  }
+  const myUid = user?.uid;
 
-  const myUid = user.uid;
-
-  /* CONTACTS (SAFE) */
+  /* =========================
+     CONTACTS (SAFE)
+  ==========================*/
   useEffect(() => {
-    try {
-      const q = query(collection(db, "users"));
-      return onSnapshot(
-        q,
-        snap => {
-          setContacts(
-            snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
-          );
-        },
-        err => {
-          console.error("Contacts error:", err);
-          setError(err.message);
-        }
-      );
-    } catch (e) {
-      console.error(e);
-      setError(e.message);
-    }
-  }, [myUid]);
+    if (!authReady || !myUid) return;
 
-  /* MESSAGES (SAFE) */
+    const q = query(collection(db, "users"));
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setContacts(
+          snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
+        );
+      },
+      (err) => console.error("Contacts error:", err)
+    );
+
+    return () => unsub();
+  }, [authReady, myUid]);
+
+  /* =========================
+     MESSAGES (SAFE)
+  ==========================*/
   useEffect(() => {
-    if (!activeUser) return;
+    if (!authReady || !myUid || !activeUser) return;
 
     const roomId = [myUid, activeUser.uid].sort().join("_");
 
-    try {
-      const q = query(
-        collection(db, "messages"),
-        where("room", "==", roomId)
-      );
+    const q = query(
+      collection(db, "messages"),
+      where("room", "==", roomId)
+    );
 
-      return onSnapshot(
-        q,
-        snap => {
-          setMessages(
-            snap.docs.map(d => d.data()).sort((a, b) => a.time - b.time)
-          );
-          setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
-        },
-        err => {
-          console.error("Messages error:", err);
-          setError(err.message);
-        }
-      );
-    } catch (e) {
-      console.error(e);
-      setError(e.message);
-    }
-  }, [activeUser, myUid]);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setMessages(
+          snap.docs.map(d => d.data()).sort((a, b) => a.time - b.time)
+        );
+        setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
+      },
+      (err) => console.error("Messages error:", err)
+    );
 
+    return () => unsub();
+  }, [authReady, myUid, activeUser]);
+
+  /* =========================
+     SEND MESSAGE
+  ==========================*/
   async function send() {
-    if (!text.trim() || !activeUser) return;
+    if (!text.trim() || !activeUser || !myUid) return;
 
-    try {
-      const roomId = [myUid, activeUser.uid].sort().join("_");
+    const roomId = [myUid, activeUser.uid].sort().join("_");
 
-      await addDoc(collection(db, "messages"), {
-        room: roomId,
-        from: myUid,
-        to: activeUser.uid,
-        text,
-        time: Date.now()
-      });
+    await addDoc(collection(db, "messages"), {
+      room: roomId,
+      from: myUid,
+      to: activeUser.uid,
+      text: text.trim(),
+      time: Date.now()
+    });
 
-      setText("");
-    } catch (e) {
-      console.error("Send error:", e);
-      setError(e.message);
-    }
+    setText("");
   }
 
-  if (error) {
+  /* =========================
+     RENDER (AFTER ALL HOOKS)
+  ==========================*/
+  if (!authReady) {
     return (
-      <div style={{ padding: 40, color: "red" }}>
-        ❌ Error: {error}
+      <div style={{ padding: 40, color: "white" }}>
+        Loading ChatEngine…
       </div>
     );
   }
@@ -139,7 +141,10 @@ export default function Chat() {
           <>
             <div className="msgs">
               {messages.map((m, i) => (
-                <div key={i} className={`bubble ${m.from === myUid ? "me" : ""}`}>
+                <div
+                  key={i}
+                  className={`bubble ${m.from === myUid ? "me" : ""}`}
+                >
                   {m.text}
                 </div>
               ))}
@@ -149,14 +154,6 @@ export default function Chat() {
             <div className="bar">
               <input
                 value={text}
-                onChange={e => setText(e.target.value)}
+                onChange={(e) => setText(e.target.value)}
                 placeholder="Type message…"
               />
-              <button onClick={send}>Send</button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
