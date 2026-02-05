@@ -11,115 +11,120 @@ import {
 import { useRouter } from "next/router";
 
 export default function Chat() {
-  const [user, setUser] = useState(undefined); // undefined = loading
+  const [user, setUser] = useState(undefined);
   const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [error, setError] = useState(null);
   const bottomRef = useRef(null);
   const router = useRouter();
 
-  /* =========================
-     AUTH – CLIENT SAFE
-  ==========================*/
+  /* AUTH */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        router.replace("/");
-      } else {
-        setUser(u);
-      }
+      if (!u) router.replace("/");
+      else setUser(u);
     });
     return () => unsub();
   }, [router]);
 
-  // ⏳ Wait for auth
   if (user === undefined) {
-    return (
-      <div style={{ color: "white", padding: 40 }}>
-        Loading ChatEngine…
-      </div>
-    );
+    return <div style={{ padding: 40, color: "white" }}>Loading…</div>;
   }
 
   const myUid = user.uid;
 
-  /* =========================
-     LOAD CONTACTS
-  ==========================*/
+  /* CONTACTS (SAFE) */
   useEffect(() => {
-    if (!myUid) return;
-
-    const q = query(collection(db, "users"));
-    const unsub = onSnapshot(q, (snap) => {
-      setContacts(
-        snap.docs
-          .map((d) => d.data())
-          .filter((u) => u.uid !== myUid)
+    try {
+      const q = query(collection(db, "users"));
+      return onSnapshot(
+        q,
+        snap => {
+          setContacts(
+            snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
+          );
+        },
+        err => {
+          console.error("Contacts error:", err);
+          setError(err.message);
+        }
       );
-    });
-
-    return () => unsub();
+    } catch (e) {
+      console.error(e);
+      setError(e.message);
+    }
   }, [myUid]);
 
-  /* =========================
-     LOAD MESSAGES
-  ==========================*/
+  /* MESSAGES (SAFE) */
   useEffect(() => {
-    if (!activeUser || !myUid) return;
+    if (!activeUser) return;
 
     const roomId = [myUid, activeUser.uid].sort().join("_");
 
-    const q = query(
-      collection(db, "messages"),
-      where("room", "==", roomId)
-    );
+    try {
+      const q = query(
+        collection(db, "messages"),
+        where("room", "==", roomId)
+      );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const msgs = snap.docs
-        .map((d) => d.data())
-        .sort((a, b) => a.time - b.time);
-
-      setMessages(msgs);
-      setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
-    });
-
-    return () => unsub();
+      return onSnapshot(
+        q,
+        snap => {
+          setMessages(
+            snap.docs.map(d => d.data()).sort((a, b) => a.time - b.time)
+          );
+          setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
+        },
+        err => {
+          console.error("Messages error:", err);
+          setError(err.message);
+        }
+      );
+    } catch (e) {
+      console.error(e);
+      setError(e.message);
+    }
   }, [activeUser, myUid]);
 
-  /* =========================
-     SEND MESSAGE
-  ==========================*/
   async function send() {
-    if (!text.trim() || !activeUser || !myUid) return;
+    if (!text.trim() || !activeUser) return;
 
-    const roomId = [myUid, activeUser.uid].sort().join("_");
+    try {
+      const roomId = [myUid, activeUser.uid].sort().join("_");
 
-    await addDoc(collection(db, "messages"), {
-      room: roomId,
-      from: myUid,
-      to: activeUser.uid,
-      text: text.trim(),
-      time: Date.now()
-    });
+      await addDoc(collection(db, "messages"), {
+        room: roomId,
+        from: myUid,
+        to: activeUser.uid,
+        text,
+        time: Date.now()
+      });
 
-    setText("");
+      setText("");
+    } catch (e) {
+      console.error("Send error:", e);
+      setError(e.message);
+    }
   }
 
-  /* =========================
-     UI
-  ==========================*/
+  if (error) {
+    return (
+      <div style={{ padding: 40, color: "red" }}>
+        ❌ Error: {error}
+      </div>
+    );
+  }
+
   return (
     <div className="chatLayout">
-      {/* CONTACT LIST */}
       <div className="contacts">
         <h3>Contacts</h3>
-        {contacts.map((u) => (
+        {contacts.map(u => (
           <div
             key={u.uid}
-            className={`contact ${
-              activeUser?.uid === u.uid ? "active" : ""
-            }`}
+            className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
             onClick={() => setActiveUser(u)}
           >
             {u.email}
@@ -127,7 +132,6 @@ export default function Chat() {
         ))}
       </div>
 
-      {/* CHAT AREA */}
       <div className="chatArea">
         {!activeUser ? (
           <div className="empty">Select a contact</div>
@@ -135,12 +139,7 @@ export default function Chat() {
           <>
             <div className="msgs">
               {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`bubble ${
-                    m.from === myUid ? "me" : ""
-                  }`}
-                >
+                <div key={i} className={`bubble ${m.from === myUid ? "me" : ""}`}>
                   {m.text}
                 </div>
               ))}
@@ -150,8 +149,8 @@ export default function Chat() {
             <div className="bar">
               <input
                 value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Type a message…"
+                onChange={e => setText(e.target.value)}
+                placeholder="Type message…"
               />
               <button onClick={send}>Send</button>
             </div>
