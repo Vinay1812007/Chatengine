@@ -11,17 +11,19 @@ import {
 import { useRouter } from "next/router";
 
 export default function Chat() {
-  const [user, setUser] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState(undefined); // undefined = loading
+  const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const bottomRef = useRef();
+  const bottomRef = useRef(null);
   const router = useRouter();
 
-  // 🔐 AUTH SAFE CHECK (FIXES BUILD ERROR)
+  /* =========================
+     AUTH – CLIENT SAFE
+  ==========================*/
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) {
         router.replace("/");
       } else {
@@ -29,46 +31,67 @@ export default function Chat() {
       }
     });
     return () => unsub();
-  }, []);
+  }, [router]);
 
   // ⏳ Wait for auth
-  if (!user) {
-    return <div style={{padding:40}}>Loading…</div>;
+  if (user === undefined) {
+    return (
+      <div style={{ color: "white", padding: 40 }}>
+        Loading ChatEngine…
+      </div>
+    );
   }
 
   const myUid = user.uid;
 
-  // Load contacts
+  /* =========================
+     LOAD CONTACTS
+  ==========================*/
   useEffect(() => {
+    if (!myUid) return;
+
     const q = query(collection(db, "users"));
-    return onSnapshot(q, snap => {
-      setUsers(
-        snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
+    const unsub = onSnapshot(q, (snap) => {
+      setContacts(
+        snap.docs
+          .map((d) => d.data())
+          .filter((u) => u.uid !== myUid)
       );
     });
+
+    return () => unsub();
   }, [myUid]);
 
-  // Load messages
+  /* =========================
+     LOAD MESSAGES
+  ==========================*/
   useEffect(() => {
-    if (!activeUser) return;
+    if (!activeUser || !myUid) return;
 
     const roomId = [myUid, activeUser.uid].sort().join("_");
+
     const q = query(
       collection(db, "messages"),
       where("room", "==", roomId)
     );
 
-    return onSnapshot(q, snap => {
+    const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs
-        .map(d => d.data())
+        .map((d) => d.data())
         .sort((a, b) => a.time - b.time);
+
       setMessages(msgs);
       setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
     });
+
+    return () => unsub();
   }, [activeUser, myUid]);
 
+  /* =========================
+     SEND MESSAGE
+  ==========================*/
   async function send() {
-    if (!text || !activeUser) return;
+    if (!text.trim() || !activeUser || !myUid) return;
 
     const roomId = [myUid, activeUser.uid].sort().join("_");
 
@@ -76,23 +99,27 @@ export default function Chat() {
       room: roomId,
       from: myUid,
       to: activeUser.uid,
-      text,
+      text: text.trim(),
       time: Date.now()
     });
 
     setText("");
   }
 
+  /* =========================
+     UI
+  ==========================*/
   return (
     <div className="chatLayout">
-
-      {/* CONTACTS */}
+      {/* CONTACT LIST */}
       <div className="contacts">
         <h3>Contacts</h3>
-        {users.map(u => (
+        {contacts.map((u) => (
           <div
             key={u.uid}
-            className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
+            className={`contact ${
+              activeUser?.uid === u.uid ? "active" : ""
+            }`}
             onClick={() => setActiveUser(u)}
           >
             {u.email}
@@ -110,7 +137,9 @@ export default function Chat() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`bubble ${m.from === myUid ? "me" : ""}`}
+                  className={`bubble ${
+                    m.from === myUid ? "me" : ""
+                  }`}
                 >
                   {m.text}
                 </div>
@@ -121,15 +150,14 @@ export default function Chat() {
             <div className="bar">
               <input
                 value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="Type message…"
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Type a message…"
               />
               <button onClick={send}>Send</button>
             </div>
           </>
         )}
       </div>
-
     </div>
   );
 }
