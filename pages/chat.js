@@ -10,19 +10,18 @@ import {
   doc,
   setDoc,
   deleteDoc,
-  updateDoc,
   serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 
-/* Fallback avatar */
+/* FALLBACK AVATAR */
 const FALLBACK_AVATAR =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-     <circle cx='50' cy='50' r='50' fill='%23334155'/>
-     <circle cx='50' cy='38' r='18' fill='%239ca3af'/>
-     <path d='M20 90c6-22 54-22 60 0' fill='%239ca3af'/>
-   </svg>`;
+    <circle cx='50' cy='50' r='50' fill='%23334155'/>
+    <circle cx='50' cy='38' r='18' fill='%239ca3af'/>
+    <path d='M20 90c6-22 54-22 60 0' fill='%239ca3af'/>
+  </svg>`;
 
 export default function Chat() {
   const router = useRouter();
@@ -37,29 +36,32 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  /* ================= AUTH ================= */
+  /* AUTH */
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
-      if (!u) router.replace("/");
-      else setUser(u);
+      if (!u) {
+        router.replace("/");
+      } else {
+        setUser(u);
+      }
       setAuthReady(true);
     });
   }, [router]);
 
   const myUid = user?.uid;
 
-  /* ================= CONTACTS ================= */
+  /* CONTACTS */
   useEffect(() => {
     if (!authReady || !myUid) return;
 
-    return onSnapshot(query(collection(db, "users")), snap => {
+    return onSnapshot(query(collection(db, "users")), (snap) => {
       setContacts(
         snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
       );
     });
   }, [authReady, myUid]);
 
-  /* ================= MESSAGES ================= */
+  /* MESSAGES */
   useEffect(() => {
     if (!activeUser || !myUid) return;
 
@@ -67,7 +69,7 @@ export default function Chat() {
 
     return onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
-      snap => {
+      (snap) => {
         setMessages(
           snap.docs.map(d => d.data()).sort((a, b) => a.time - b.time)
         );
@@ -76,18 +78,18 @@ export default function Chat() {
     );
   }, [activeUser, myUid]);
 
-  /* ================= TYPING LISTENER ================= */
+  /* TYPING LISTENER */
   useEffect(() => {
     if (!activeUser || !myUid) return;
 
-    const typingRef = doc(db, "typing", activeUser.uid + "_" + myUid);
+    const typingRef = doc(db, "typing", `${activeUser.uid}_${myUid}`);
 
-    return onSnapshot(typingRef, snap => {
+    return onSnapshot(typingRef, (snap) => {
       setTyping(snap.exists() && snap.data().isTyping);
     });
   }, [activeUser, myUid]);
 
-  /* ================= SEND MESSAGE ================= */
+  /* SEND MESSAGE */
   async function send() {
     if (!text.trim() || !activeUser) return;
 
@@ -100,17 +102,17 @@ export default function Chat() {
       time: Date.now()
     });
 
-    await deleteDoc(doc(db, "typing", myUid + "_" + activeUser.uid));
+    await deleteDoc(doc(db, "typing", `${myUid}_${activeUser.uid}`));
     setText("");
   }
 
-  /* ================= HANDLE TYPING ================= */
+  /* HANDLE TYPING */
   async function handleTyping(value) {
     setText(value);
 
     if (!activeUser) return;
 
-    const ref = doc(db, "typing", myUid + "_" + activeUser.uid);
+    const ref = doc(db, "typing", `${myUid}_${activeUser.uid}`);
 
     if (value.trim()) {
       await setDoc(ref, {
@@ -129,20 +131,26 @@ export default function Chat() {
     router.replace("/");
   }
 
-  if (!authReady) return <div style={{ padding: 40 }}>Loading…</div>;
+  if (!authReady) {
+    return <div style={{ padding: 40 }}>Loading…</div>;
+  }
 
   return (
     <div className="chatLayout">
       {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
-        {contacts.map(u => (
+        {contacts.map((u) => (
           <div
             key={u.uid}
             className="contact"
             onClick={() => setActiveUser(u)}
           >
-            <img src={u.photo || FALLBACK_AVATAR} className="avatar" />
+            <img
+              src={u.photo || FALLBACK_AVATAR}
+              className="avatar"
+              referrerPolicy="no-referrer"
+            />
             {u.email}
           </div>
         ))}
@@ -155,9 +163,7 @@ export default function Chat() {
             <div>
               <div>{activeUser.email}</div>
               {typing && (
-                <small style={{ color: "#22c55e" }}>
-                  typing…
-                </small>
+                <small style={{ color: "#22c55e" }}>typing…</small>
               )}
             </div>
           )}
@@ -176,3 +182,21 @@ export default function Chat() {
                 >
                   <div className="bubble">{m.text}</div>
                 </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            <div className="bar">
+              <input
+                value={text}
+                onChange={(e) => handleTyping(e.target.value)}
+                placeholder="Type message…"
+              />
+              <button onClick={send}>Send</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
