@@ -27,6 +27,10 @@ export default function Chat() {
   const router = useRouter();
   const bottomRef = useRef(null);
 
+  /* sounds */
+  const sendSound = useRef(null);
+  const receiveSound = useRef(null);
+
   const [user, setUser] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
@@ -36,7 +40,7 @@ export default function Chat() {
 
   const myUid = user?.uid;
 
-  /* AUTH + ONLINE */
+  /* AUTH */
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       if (!u) {
@@ -68,37 +72,26 @@ export default function Chat() {
 
     return onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
-      async snap => {
+      snap => {
         const msgs = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => a.time - b.time);
 
-        setMessages(msgs);
-
-        for (const m of msgs) {
-          if (m.from !== myUid && m.status !== "seen") {
-            await updateDoc(doc(db, "messages", m.id), {
-              status: "seen"
-            });
-          }
+        if (messages.length && msgs.length > messages.length) {
+          receiveSound.current?.play();
         }
 
+        setMessages(msgs);
         setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
       }
     );
-  }, [activeUser, myUid]);
+  }, [activeUser, myUid, messages.length]);
 
-  /* TYPING LISTENER */
-  useEffect(() => {
-    if (!activeUser || !myUid) return;
-    return onSnapshot(
-      doc(db, "typing", `${activeUser.uid}_${myUid}`),
-      snap => setTyping(snap.exists())
-    );
-  }, [activeUser, myUid]);
-
+  /* SEND MESSAGE */
   async function send() {
     if (!text.trim() || !activeUser) return;
+
+    sendSound.current?.play();
 
     await addDoc(collection(db, "messages"), {
       room: [myUid, activeUser.uid].sort().join("_"),
@@ -113,12 +106,12 @@ export default function Chat() {
     setText("");
   }
 
+  /* TYPING */
   async function handleTyping(v) {
     setText(v);
     if (!activeUser) return;
 
     const ref = doc(db, "typing", `${myUid}_${activeUser.uid}`);
-
     if (v.trim()) {
       await setDoc(ref, { typing: true, time: serverTimestamp() });
     } else {
@@ -134,18 +127,30 @@ export default function Chat() {
   }
 
   async function logout() {
-    if (user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        online: false,
-        lastSeen: serverTimestamp()
-      });
-    }
+    await updateDoc(doc(db, "users", user.uid), {
+      online: false,
+      lastSeen: serverTimestamp()
+    });
     await signOut(auth);
     router.replace("/");
   }
 
+  /* CALL BUTTON HANDLERS (UI READY) */
+  function audioCall() {
+    alert("📞 Audio call UI ready (WebRTC hook next)");
+  }
+
+  function videoCall() {
+    alert("🎥 Video call UI ready (WebRTC hook next)");
+  }
+
   return (
     <div className="chatLayout">
+      {/* SOUNDS */}
+      <audio ref={sendSound} src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" />
+      <audio ref={receiveSound} src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" />
+
+      {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
@@ -163,15 +168,15 @@ export default function Chat() {
         ))}
       </div>
 
+      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
-          {activeUser && (
-            <div>
-              <div>{activeUser.email}</div>
-              {typing && <small style={{ color: "#22c55e" }}>typing…</small>}
-            </div>
-          )}
-          <button onClick={logout}>Logout</button>
+          {activeUser?.email}
+          <div className="callBtns">
+            <button onClick={audioCall}>📞</button>
+            <button onClick={videoCall}>🎥</button>
+            <button onClick={logout}>Logout</button>
+          </div>
         </div>
 
         {!activeUser ? (
@@ -182,19 +187,9 @@ export default function Chat() {
               {messages.map(m => (
                 <div
                   key={m.id}
-                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
+                  className={`msgRow ${m.from === myUid ? "me" : ""} animate`}
                 >
-                  <div className="bubble">
-                    {m.text}
-                    {m.from === myUid && (
-                      <span style={{ marginLeft: 6, fontSize: 12 }}>
-                        {m.status === "sent" && "✓"}
-                        {m.status === "seen" && (
-                          <span style={{ color: "#22c55e" }}>✓✓</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
+                  <div className="bubble">{m.text}</div>
                 </div>
               ))}
               <div ref={bottomRef} />
