@@ -104,3 +104,27 @@ button {
   bottom:30px;
   background:red;
 }
+.callScreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.callActions {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.callActions .accept {
+  background: #22c55e;
+}
+
+.callActions .reject {
+  background: #ef4444;
+}
