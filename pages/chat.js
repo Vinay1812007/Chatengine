@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
@@ -8,15 +8,14 @@ import {
   onSnapshot,
   where,
   doc,
-  setDoc,
   updateDoc,
+  setDoc,
   deleteDoc,
   serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 
-/* fallback avatar */
-const FALLBACK_AVATAR =
+const FALLBACK =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
     <circle cx='50' cy='50' r='50' fill='%23334155'/>
@@ -26,78 +25,56 @@ const FALLBACK_AVATAR =
 
 export default function Chat() {
   const router = useRouter();
+  const bottomRef = useRef(null);
 
   const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
 
-  const bottomRef = useRef(null);
+  const myUid = user?.uid;
 
-  /* ================= AUTH + ONLINE ================= */
+  /* AUTH + ONLINE */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       if (!u) {
         router.replace("/");
         return;
       }
-
       setUser(u);
-      setAuthReady(true);
-
-      const ref = doc(db, "users", u.uid);
-
-      await updateDoc(ref, {
+      await updateDoc(doc(db, "users", u.uid), {
         online: true,
         lastSeen: serverTimestamp()
       });
-
-      const off = async () => {
-        await updateDoc(ref, {
-          online: false,
-          lastSeen: serverTimestamp()
-        });
-      };
-
-      window.addEventListener("beforeunload", off);
-      return () => window.removeEventListener("beforeunload", off);
     });
-
-    return () => unsub();
   }, [router]);
 
-  const myUid = user?.uid;
-
-  /* ================= CONTACTS ================= */
+  /* CONTACTS */
   useEffect(() => {
-    if (!authReady || !myUid) return;
-
-    return onSnapshot(collection(db, "users"), (snap) => {
+    if (!myUid) return;
+    return onSnapshot(collection(db, "users"), snap => {
       setContacts(
         snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
       );
     });
-  }, [authReady, myUid]);
+  }, [myUid]);
 
-  /* ================= MESSAGES ================= */
+  /* MESSAGES */
   useEffect(() => {
     if (!activeUser || !myUid) return;
-
     const room = [myUid, activeUser.uid].sort().join("_");
 
     return onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
-      async (snap) => {
+      async snap => {
         const msgs = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => a.time - b.time);
 
         setMessages(msgs);
 
-        // mark seen
         for (const m of msgs) {
           if (m.from !== myUid && m.status !== "seen") {
             await updateDoc(doc(db, "messages", m.id), {
@@ -111,25 +88,20 @@ export default function Chat() {
     );
   }, [activeUser, myUid]);
 
-  /* ================= TYPING LISTENER ================= */
+  /* TYPING LISTENER */
   useEffect(() => {
     if (!activeUser || !myUid) return;
-
-    const ref = doc(db, "typing", `${activeUser.uid}_${myUid}`);
-
-    return onSnapshot(ref, (snap) => {
-      setTyping(snap.exists() && snap.data().isTyping);
-    });
+    return onSnapshot(
+      doc(db, "typing", `${activeUser.uid}_${myUid}`),
+      snap => setTyping(snap.exists())
+    );
   }, [activeUser, myUid]);
 
-  /* ================= SEND MESSAGE ================= */
   async function send() {
     if (!text.trim() || !activeUser) return;
 
-    const room = [myUid, activeUser.uid].sort().join("_");
-
     await addDoc(collection(db, "messages"), {
-      room,
+      room: [myUid, activeUser.uid].sort().join("_"),
       from: myUid,
       to: activeUser.uid,
       text,
@@ -141,28 +113,20 @@ export default function Chat() {
     setText("");
   }
 
-  /* ================= HANDLE TYPING ================= */
-  async function handleTyping(value) {
-    setText(value);
-
+  async function handleTyping(v) {
+    setText(v);
     if (!activeUser) return;
 
     const ref = doc(db, "typing", `${myUid}_${activeUser.uid}`);
 
-    if (value.trim()) {
-      await setDoc(ref, {
-        from: myUid,
-        to: activeUser.uid,
-        isTyping: true,
-        time: serverTimestamp()
-      });
+    if (v.trim()) {
+      await setDoc(ref, { typing: true, time: serverTimestamp() });
     } else {
       await deleteDoc(ref);
     }
   }
 
-  /* ================= ENTER TO SEND ================= */
-  function handleKeyDown(e) {
+  function onKey(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send();
@@ -180,11 +144,8 @@ export default function Chat() {
     router.replace("/");
   }
 
-  if (!authReady) return <div style={{ padding: 40 }}>Loading…</div>;
-
   return (
     <div className="chatLayout">
-      {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
@@ -193,28 +154,21 @@ export default function Chat() {
             className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
             onClick={() => setActiveUser(u)}
           >
-            <img src={u.photo || FALLBACK_AVATAR} className="avatar" />
+            <img src={u.photo || FALLBACK} className="avatar" />
             <div>
               <div>{u.email}</div>
-              <small style={{ opacity: 0.7 }}>
-                {u.online ? "🟢 Online" : "Last seen"}
-              </small>
+              <small>{u.online ? "🟢 Online" : "Offline"}</small>
             </div>
           </div>
         ))}
       </div>
 
-      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
           {activeUser && (
             <div>
               <div>{activeUser.email}</div>
-              {typing && (
-                <small style={{ color: "#22c55e" }}>
-                  typing…
-                </small>
-              )}
+              {typing && <small style={{ color: "#22c55e" }}>typing…</small>}
             </div>
           )}
           <button onClick={logout}>Logout</button>
@@ -224,4 +178,41 @@ export default function Chat() {
           <div className="empty">Select a contact</div>
         ) : (
           <>
-            <div className
+            <div className="msgs">
+              {messages.map(m => (
+                <div
+                  key={m.id}
+                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
+                >
+                  <div className="bubble">
+                    {m.text}
+                    {m.from === myUid && (
+                      <span style={{ marginLeft: 6, fontSize: 12 }}>
+                        {m.status === "sent" && "✓"}
+                        {m.status === "seen" && (
+                          <span style={{ color: "#22c55e" }}>✓✓</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            <div className="bar">
+              <textarea
+                value={text}
+                onChange={e => handleTyping(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="Type message…"
+                rows={1}
+              />
+              <button onClick={send}>Send</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
