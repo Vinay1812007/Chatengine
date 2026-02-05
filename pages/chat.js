@@ -25,11 +25,8 @@ export default function Chat() {
   /* AUTH */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        router.replace("/");
-      } else {
-        setUser(u);
-      }
+      if (!u) router.replace("/");
+      else setUser(u);
       setAuthReady(true);
     });
     return () => unsub();
@@ -81,6 +78,7 @@ export default function Chat() {
     await addDoc(collection(db, "messages"), {
       room: roomId,
       from: myUid,
+      fromPhoto: user.photoURL || "",
       to: activeUser.uid,
       text: text.trim(),
       time: Date.now()
@@ -95,11 +93,7 @@ export default function Chat() {
   }
 
   if (!authReady) {
-    return (
-      <div style={{ padding: 40, color: "white" }}>
-        Loading…
-      </div>
-    );
+    return <div style={{ padding: 40, color: "white" }}>Loading…</div>;
   }
 
   return (
@@ -113,7 +107,11 @@ export default function Chat() {
             className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
             onClick={() => setActiveUser(u)}
           >
-            {u.email}
+            <img
+              src={u.photo || "/avatar.png"}
+              className="avatar"
+            />
+            <span>{u.email}</span>
           </div>
         ))}
       </div>
@@ -121,20 +119,16 @@ export default function Chat() {
       {/* CHAT */}
       <div className="chatArea">
         {/* HEADER */}
-        <div style={{
-          padding: "10px 16px",
-          borderBottom: "1px solid #1e293b",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-          <div>{user?.email}</div>
-          <button
-            style={{ width: "auto", padding: "6px 12px" }}
-            onClick={logout}
-          >
-            Logout
-          </button>
+        <div className="chatHeader">
+          <div className="headerUser">
+            <img
+              src={activeUser?.photo || "/avatar.png"}
+              className="avatar"
+            />
+            <span>{activeUser?.email}</span>
+          </div>
+
+          <button onClick={logout}>Logout</button>
         </div>
 
         {!activeUser ? (
@@ -145,9 +139,17 @@ export default function Chat() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`bubble ${m.from === myUid ? "me" : ""}`}
+                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
                 >
-                  {m.text}
+                  <img
+                    src={
+                      m.from === myUid
+                        ? user.photoURL || "/avatar.png"
+                        : activeUser.photo || "/avatar.png"
+                    }
+                    className="avatar small"
+                  />
+                  <div className="bubble">{m.text}</div>
                 </div>
               ))}
               <div ref={bottomRef} />
