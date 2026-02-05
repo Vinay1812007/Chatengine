@@ -101,3 +101,46 @@ button {
   margin: auto;
   opacity: 0.6;
 }
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 10px;
+}
+
+.avatar.small {
+  width: 28px;
+  height: 28px;
+}
+
+.contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatHeader {
+  padding: 10px 16px;
+  borderBottom: 1px solid #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerUser {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.msgRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.msgRow.me {
+  justify-content: flex-end;
+}
