@@ -23,7 +23,7 @@ export default function Index() {
           uid: res.user.uid,
           email: res.user.email,
           name: res.user.displayName,
-          photo: res.user.photoURL
+          photo: res.user.photoURL || ""
         },
         { merge: true }
       );
