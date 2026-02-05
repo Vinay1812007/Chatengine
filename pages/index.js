@@ -435,3 +435,37 @@ export default function Home() {
     </div>
   );
 }
+import { useState } from "react";
+import { auth, db } from "../lib/firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/router";
+
+export default function Home() {
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const router = useRouter();
+
+  async function login(register) {
+    const res = register
+      ? await createUserWithEmailAndPassword(auth, email, pass)
+      : await signInWithEmailAndPassword(auth, email, pass);
+
+    await setDoc(doc(db, "users", res.user.uid), {
+      uid: res.user.uid,
+      email
+    });
+
+    router.push("/chat");
+  }
+
+  return (
+    <div className="auth">
+      <h1>ChatEngine</h1>
+      <input placeholder="Email" onChange={e=>setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={e=>setPass(e.target.value)} />
+      <button onClick={()=>login(false)}>Login</button>
+      <button onClick={()=>login(true)}>Register</button>
+    </div>
+  );
+}
