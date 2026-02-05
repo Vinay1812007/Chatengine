@@ -8,8 +8,8 @@ import {
   onSnapshot,
   where,
   doc,
-  updateDoc,
   setDoc,
+  updateDoc,
   deleteDoc,
   serverTimestamp
 } from "firebase/firestore";
@@ -28,22 +28,18 @@ export default function Chat() {
   const router = useRouter();
   const bottomRef = useRef(null);
 
-  const localVideo = useRef(null);
-  const remoteVideo = useRef(null);
-  const pcRef = useRef(null);
-  const localStream = useRef(null);
-
   const [user, setUser] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [callActive, setCallActive] = useState(false);
+
+  const [incomingCall, setIncomingCall] = useState(null);
+  const ringSound = useRef(null);
 
   const myUid = user?.uid;
 
-  /* AUTH + ONLINE */
+  /* AUTH */
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       if (!u) {
@@ -76,24 +72,32 @@ export default function Chat() {
     return onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
       snap => {
-        const msgs = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => a.time - b.time);
-        setMessages(msgs);
+        setMessages(
+          snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        );
         setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
       }
     );
   }, [activeUser, myUid]);
 
-  /* TYPING LISTENER */
+  /* LISTEN FOR INCOMING CALL */
   useEffect(() => {
-    if (!activeUser || !myUid) return;
-    return onSnapshot(
-      doc(db, "typing", `${activeUser.uid}_${myUid}`),
-      snap => setTyping(snap.exists())
-    );
-  }, [activeUser, myUid]);
+    if (!myUid) return;
 
+    const ref = doc(db, "calls", myUid);
+
+    return onSnapshot(ref, snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.status === "calling") {
+          setIncomingCall(data);
+          ringSound.current?.play();
+        }
+      }
+    });
+  }, [myUid]);
+
+  /* SEND MESSAGE */
   async function send() {
     if (!text.trim() || !activeUser) return;
 
@@ -104,43 +108,39 @@ export default function Chat() {
       time: Date.now()
     });
 
-    await deleteDoc(doc(db, "typing", `${myUid}_${activeUser.uid}`));
     setText("");
   }
 
-  async function handleTyping(v) {
-    setText(v);
+  /* START CALL */
+  async function startCall(video = false) {
     if (!activeUser) return;
 
-    const ref = doc(db, "typing", `${myUid}_${activeUser.uid}`);
-    if (v.trim()) {
-      await setDoc(ref, { typing: true, time: serverTimestamp() });
-    } else {
-      await deleteDoc(ref);
-    }
-  }
-
-  function onKey(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  }
-
-  /* CALLS (P2P BASIC) */
-  async function startCall(video) {
-    localStream.current = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video
+    await setDoc(doc(db, "calls", activeUser.uid), {
+      from: myUid,
+      fromEmail: user.email,
+      type: video ? "video" : "audio",
+      status: "calling",
+      time: serverTimestamp()
     });
 
-    localVideo.current.srcObject = localStream.current;
-    setCallActive(true);
+    alert("Calling… waiting for answer");
   }
 
-  function endCall() {
-    localStream.current?.getTracks().forEach(t => t.stop());
-    setCallActive(false);
+  /* ACCEPT CALL */
+  async function acceptCall() {
+    await updateDoc(doc(db, "calls", myUid), {
+      status: "accepted"
+    });
+    ringSound.current.pause();
+    setIncomingCall(null);
+    alert("Call accepted (media connection comes next)");
+  }
+
+  /* REJECT CALL */
+  async function rejectCall() {
+    await deleteDoc(doc(db, "calls", myUid));
+    ringSound.current.pause();
+    setIncomingCall(null);
   }
 
   async function logout() {
@@ -154,6 +154,13 @@ export default function Chat() {
 
   return (
     <div className="chatLayout">
+      <audio
+        ref={ringSound}
+        loop
+        src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg"
+      />
+
+      {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
@@ -171,12 +178,10 @@ export default function Chat() {
         ))}
       </div>
 
+      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
-          <div>
-            {activeUser?.email}
-            {typing && <small style={{ color: "#22c55e" }}> typing…</small>}
-          </div>
+          {activeUser?.email}
           <div className="callBtns">
             <button onClick={() => startCall(false)}>📞</button>
             <button onClick={() => startCall(true)}>🎥</button>
@@ -201,12 +206,11 @@ export default function Chat() {
             </div>
 
             <div className="bar">
-              <textarea
+              <input
                 value={text}
-                onChange={e => handleTyping(e.target.value)}
-                onKeyDown={onKey}
+                onChange={e => setText(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && send()}
                 placeholder="Type message…"
-                rows={1}
               />
               <button onClick={send}>Send</button>
             </div>
@@ -214,10 +218,15 @@ export default function Chat() {
         )}
       </div>
 
-      {callActive && (
-        <div className="callModal">
-          <video ref={localVideo} autoPlay muted />
-          <button className="end" onClick={endCall}>End Call</button>
+      {/* INCOMING CALL SCREEN */}
+      {incomingCall && (
+        <div className="callScreen">
+          <h2>Incoming {incomingCall.type} call</h2>
+          <p>{incomingCall.fromEmail}</p>
+          <div className="callActions">
+            <button className="accept" onClick={acceptCall}>Accept</button>
+            <button className="reject" onClick={rejectCall}>Reject</button>
+          </div>
         </div>
       )}
     </div>
