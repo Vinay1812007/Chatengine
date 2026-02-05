@@ -1,53 +1,64 @@
 import { useEffect, useState, useRef } from "react";
-import { auth, db, storage } from "../lib/firebase";
-import { collection, addDoc, query, where, onSnapshot } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db } from "../lib/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot
+} from "firebase/firestore";
 
 export default function Chat() {
-  const [room] = useState("global");
   const [text, setText] = useState("");
-  const [msgs, setMsgs] = useState([]);
-  const bottom = useRef();
+  const [messages, setMessages] = useState([]);
+  const bottomRef = useRef();
 
   useEffect(() => {
-    const q = query(collection(db, "messages"), where("room", "==", room));
+    const q = query(
+      collection(db, "messages"),
+      where("room", "==", "global")
+    );
+
     return onSnapshot(q, snap => {
-      const m = snap.docs.map(d => d.data())
-        .sort((a,b)=>a.clientTime-b.clientTime);
-      setMsgs(m);
-      setTimeout(()=>bottom.current?.scrollIntoView(),50);
+      const data = snap.docs
+        .map(d => d.data())
+        .sort((a, b) => a.clientTime - b.clientTime);
+      setMessages(data);
+      setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
     });
   }, []);
 
   async function send() {
     if (!text.trim()) return;
-    await addDoc(collection(db,"messages"),{
+
+    await addDoc(collection(db, "messages"), {
       text,
-      room,
+      room: "global",
       uid: auth.currentUser.uid,
       email: auth.currentUser.email,
       clientTime: Date.now()
     });
-    setText("");
+
+    setText(""); // 🔥 THIS guarantees visibility reset
   }
 
   return (
     <div className="chat">
       <div className="msgs">
-        {msgs.map((m,i)=>(
-          <div key={i} className="bubble">
+        {messages.map((m, i) => (
+          <div className="bubble" key={i}>
             <b>{m.email}</b>
-            <div>{m.text}</div>
+            <div className="msgText">{m.text}</div>
           </div>
         ))}
-        <div ref={bottom} />
+        <div ref={bottomRef} />
       </div>
 
       <div className="bar">
         <input
           value={text}
-          onChange={e=>setText(e.target.value)}
-          placeholder="Type message..."
+          onChange={e => setText(e.target.value)}
+          placeholder="Type a message…"
         />
         <button onClick={send}>Send</button>
       </div>
