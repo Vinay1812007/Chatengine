@@ -1,8 +1,5 @@
 import { auth, db } from "../lib/firebase";
-import {
-  GoogleAuthProvider,
-  signInWithPopup
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -12,7 +9,6 @@ export default function Index() {
   const [error, setError] = useState("");
 
   async function googleLogin() {
-    setError("");
     try {
       const provider = new GoogleAuthProvider();
       const res = await signInWithPopup(auth, provider);
@@ -30,7 +26,6 @@ export default function Index() {
 
       router.push("/chat");
     } catch (e) {
-      console.error(e);
       setError(e.message);
     }
   }
@@ -39,11 +34,7 @@ export default function Index() {
     <div className="auth">
       <h1>ChatEngine</h1>
 
-      {error && (
-        <div style={{ color: "red", marginBottom: 10 }}>
-          {error}
-        </div>
-      )}
+      {error && <div style={{ color: "red" }}>{error}</div>}
 
       <button className="google" onClick={googleLogin}>
         Continue with Google
