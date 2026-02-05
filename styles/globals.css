@@ -1,1 +1,2 @@
-html,body,#__next { height:100%; margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f4f6; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+html,body,#__next { height:100%; margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: linear-gradient(180deg, #0f172a 0%, #071032 100%); color: #e6eef8; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
