@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: system-ui;
-  background: linear-gradient(160deg,#0f172a,#020617);
+  background: linear-gradient(160deg, #0f172a, #020617);
   color: white;
 }
 
@@ -17,7 +17,7 @@ input {
   margin: 8px 0;
   border-radius: 10px;
   border: 1px solid #334155;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.12);
   color: white;
 }
 
@@ -37,10 +37,13 @@ button {
 }
 
 .bubble {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.14);
   padding: 10px;
   margin: 6px 0;
   border-radius: 12px;
+}
+
+.msgText {
   color: white;
 }
 
