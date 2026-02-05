@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 
+/* fallback avatar */
 const FALLBACK =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -27,9 +28,10 @@ export default function Chat() {
   const router = useRouter();
   const bottomRef = useRef(null);
 
-  /* sounds */
-  const sendSound = useRef(null);
-  const receiveSound = useRef(null);
+  const localVideo = useRef(null);
+  const remoteVideo = useRef(null);
+  const pcRef = useRef(null);
+  const localStream = useRef(null);
 
   const [user, setUser] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -37,10 +39,11 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
+  const [callActive, setCallActive] = useState(false);
 
   const myUid = user?.uid;
 
-  /* AUTH */
+  /* AUTH + ONLINE */
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       if (!u) {
@@ -76,37 +79,35 @@ export default function Chat() {
         const msgs = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => a.time - b.time);
-
-        if (messages.length && msgs.length > messages.length) {
-          receiveSound.current?.play();
-        }
-
         setMessages(msgs);
         setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
       }
     );
-  }, [activeUser, myUid, messages.length]);
+  }, [activeUser, myUid]);
 
-  /* SEND MESSAGE */
+  /* TYPING LISTENER */
+  useEffect(() => {
+    if (!activeUser || !myUid) return;
+    return onSnapshot(
+      doc(db, "typing", `${activeUser.uid}_${myUid}`),
+      snap => setTyping(snap.exists())
+    );
+  }, [activeUser, myUid]);
+
   async function send() {
     if (!text.trim() || !activeUser) return;
-
-    sendSound.current?.play();
 
     await addDoc(collection(db, "messages"), {
       room: [myUid, activeUser.uid].sort().join("_"),
       from: myUid,
-      to: activeUser.uid,
       text,
-      time: Date.now(),
-      status: "sent"
+      time: Date.now()
     });
 
     await deleteDoc(doc(db, "typing", `${myUid}_${activeUser.uid}`));
     setText("");
   }
 
-  /* TYPING */
   async function handleTyping(v) {
     setText(v);
     if (!activeUser) return;
@@ -126,6 +127,22 @@ export default function Chat() {
     }
   }
 
+  /* CALLS (P2P BASIC) */
+  async function startCall(video) {
+    localStream.current = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video
+    });
+
+    localVideo.current.srcObject = localStream.current;
+    setCallActive(true);
+  }
+
+  function endCall() {
+    localStream.current?.getTracks().forEach(t => t.stop());
+    setCallActive(false);
+  }
+
   async function logout() {
     await updateDoc(doc(db, "users", user.uid), {
       online: false,
@@ -135,22 +152,8 @@ export default function Chat() {
     router.replace("/");
   }
 
-  /* CALL BUTTON HANDLERS (UI READY) */
-  function audioCall() {
-    alert("📞 Audio call UI ready (WebRTC hook next)");
-  }
-
-  function videoCall() {
-    alert("🎥 Video call UI ready (WebRTC hook next)");
-  }
-
   return (
     <div className="chatLayout">
-      {/* SOUNDS */}
-      <audio ref={sendSound} src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" />
-      <audio ref={receiveSound} src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" />
-
-      {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
@@ -168,13 +171,15 @@ export default function Chat() {
         ))}
       </div>
 
-      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
-          {activeUser?.email}
+          <div>
+            {activeUser?.email}
+            {typing && <small style={{ color: "#22c55e" }}> typing…</small>}
+          </div>
           <div className="callBtns">
-            <button onClick={audioCall}>📞</button>
-            <button onClick={videoCall}>🎥</button>
+            <button onClick={() => startCall(false)}>📞</button>
+            <button onClick={() => startCall(true)}>🎥</button>
             <button onClick={logout}>Logout</button>
           </div>
         </div>
@@ -187,7 +192,7 @@ export default function Chat() {
               {messages.map(m => (
                 <div
                   key={m.id}
-                  className={`msgRow ${m.from === myUid ? "me" : ""} animate`}
+                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
                 >
                   <div className="bubble">{m.text}</div>
                 </div>
@@ -208,6 +213,13 @@ export default function Chat() {
           </>
         )}
       </div>
+
+      {callActive && (
+        <div className="callModal">
+          <video ref={localVideo} autoPlay muted />
+          <button className="end" onClick={endCall}>End Call</button>
+        </div>
+      )}
     </div>
   );
 }
