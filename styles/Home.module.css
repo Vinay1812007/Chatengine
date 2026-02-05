@@ -1,0 +1,17 @@
+.container { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+.chatContainer { width:100%; max-width:800px; background:white; border-radius:12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); overflow:hidden; display:flex; flex-direction:column; height:80vh; }
+.header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #eee; }
+.header h1 { margin:0; font-size:18px; }
+.userRow { display:flex; align-items:center; gap:10px; }
+.avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; }
+.btn, .btnPrimary { border:0; padding:8px 12px; border-radius:8px; cursor:pointer; }
+.btnPrimary { background:#2563eb; color:white; }
+.messages { padding:16px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:12px; }
+.message { display:flex; gap:12px; align-items:flex-start; }
+.msgAvatar { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+.me { justify-content:flex-end; }
+.me .msgText { background:#dcfce7; }
+.msgText { background:#f3f4f6; padding:8px 12px; border-radius:8px; max-width:70ch; white-space:pre-wrap; }
+.sendForm { display:flex; padding:12px; gap:8px; border-top:1px solid #eee; }
+.input { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #ddd; }
+.sendBtn { padding:10px 14px; border-radius:8px; border:0; background:#10b981; color:white; cursor:pointer; }
