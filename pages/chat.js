@@ -4,64 +4,102 @@ import {
   collection,
   addDoc,
   query,
-  where,
-  onSnapshot
+  onSnapshot,
+  where
 } from "firebase/firestore";
 
 export default function Chat() {
-  const [text, setText] = useState("");
+  const [users, setUsers] = useState([]);
+  const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
   const bottomRef = useRef();
 
-  useEffect(() => {
-    const q = query(
-      collection(db, "messages"),
-      where("room", "==", "global")
-    );
+  const myUid = auth.currentUser.uid;
 
+  // Load contacts
+  useEffect(() => {
+    const q = query(collection(db, "users"));
     return onSnapshot(q, snap => {
-      const data = snap.docs
-        .map(d => d.data())
-        .sort((a, b) => a.clientTime - b.clientTime);
-      setMessages(data);
-      setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
+      setUsers(snap.docs.map(d => d.data()).filter(u => u.uid !== myUid));
     });
   }, []);
 
+  // Load messages
+  useEffect(() => {
+    if (!activeUser) return;
+
+    const roomId = [myUid, activeUser.uid].sort().join("_");
+    const q = query(collection(db, "messages"), where("room", "==", roomId));
+
+    return onSnapshot(q, snap => {
+      const msgs = snap.docs.map(d => d.data())
+        .sort((a,b)=>a.time-b.time);
+      setMessages(msgs);
+      setTimeout(()=>bottomRef.current?.scrollIntoView(),50);
+    });
+  }, [activeUser]);
+
   async function send() {
-    if (!text.trim()) return;
+    if (!text || !activeUser) return;
+
+    const roomId = [myUid, activeUser.uid].sort().join("_");
 
     await addDoc(collection(db, "messages"), {
+      room: roomId,
+      from: myUid,
+      to: activeUser.uid,
       text,
-      room: "global",
-      uid: auth.currentUser.uid,
-      email: auth.currentUser.email,
-      clientTime: Date.now()
+      time: Date.now()
     });
 
-    setText(""); // 🔥 THIS guarantees visibility reset
+    setText("");
   }
 
   return (
-    <div className="chat">
-      <div className="msgs">
-        {messages.map((m, i) => (
-          <div className="bubble" key={i}>
-            <b>{m.email}</b>
-            <div className="msgText">{m.text}</div>
+    <div className="chatLayout">
+
+      {/* CONTACTS */}
+      <div className="contacts">
+        <h3>Contacts</h3>
+        {users.map(u=>(
+          <div
+            key={u.uid}
+            className={`contact ${activeUser?.uid===u.uid?'active':''}`}
+            onClick={()=>setActiveUser(u)}
+          >
+            {u.email}
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
-      <div className="bar">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Type a message…"
-        />
-        <button onClick={send}>Send</button>
+      {/* CHAT */}
+      <div className="chatArea">
+        {!activeUser ? (
+          <div className="empty">Select a contact</div>
+        ) : (
+          <>
+            <div className="msgs">
+              {messages.map((m,i)=>(
+                <div key={i} className={`bubble ${m.from===myUid?'me':''}`}>
+                  {m.text}
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            <div className="bar">
+              <input
+                value={text}
+                onChange={e=>setText(e.target.value)}
+                placeholder="Type message…"
+              />
+              <button onClick={send}>Send</button>
+            </div>
+          </>
+        )}
       </div>
+
     </div>
   );
 }
