@@ -12,46 +12,87 @@ import { useRouter } from "next/router";
 export default function Index() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
-  async function emailAuth(register) {
-    if (!email || !password) return alert("Enter email & password");
+  async function emailAuth(isRegister) {
+    setError("");
 
-    const res = register
-      ? await createUserWithEmailAndPassword(auth, email, password)
-      : await signInWithEmailAndPassword(auth, email, password);
+    if (!email || !password) {
+      setError("Email and password required");
+      return;
+    }
 
-    await setDoc(doc(db, "users", res.user.uid), {
-      uid: res.user.uid,
-      email: res.user.email,
-      name: res.user.displayName || email.split("@")[0]
-    }, { merge: true });
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
 
-    router.push("/chat");
+    try {
+      const res = isRegister
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
+
+      await setDoc(
+        doc(db, "users", res.user.uid),
+        {
+          uid: res.user.uid,
+          email: res.user.email,
+          name: res.user.displayName || email.split("@")[0]
+        },
+        { merge: true }
+      );
+
+      router.push("/chat");
+    } catch (e) {
+      console.error(e);
+      setError(e.message.replace("Firebase: ", ""));
+    }
   }
 
   async function googleLogin() {
-    const provider = new GoogleAuthProvider();
-    const res = await signInWithPopup(auth, provider);
+    try {
+      const provider = new GoogleAuthProvider();
+      const res = await signInWithPopup(auth, provider);
 
-    await setDoc(doc(db, "users", res.user.uid), {
-      uid: res.user.uid,
-      email: res.user.email,
-      name: res.user.displayName
-    }, { merge: true });
+      await setDoc(
+        doc(db, "users", res.user.uid),
+        {
+          uid: res.user.uid,
+          email: res.user.email,
+          name: res.user.displayName
+        },
+        { merge: true }
+      );
 
-    router.push("/chat");
+      router.push("/chat");
+    } catch (e) {
+      console.error(e);
+      setError(e.message);
+    }
   }
 
   return (
     <div className="auth">
       <h1>ChatEngine</h1>
 
-      <input placeholder="Email" onChange={e=>setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={e=>setPassword(e.target.value)} />
+      <input
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
-      <button onClick={()=>emailAuth(false)}>Login</button>
-      <button onClick={()=>emailAuth(true)}>Register</button>
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      {error && <div style={{ color: "red", marginTop: 8 }}>{error}</div>}
+
+      <button onClick={() => emailAuth(false)}>Login</button>
+      <button onClick={() => emailAuth(true)}>Register</button>
 
       <div className="divider">OR</div>
 
