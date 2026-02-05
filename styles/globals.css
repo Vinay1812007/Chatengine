@@ -1,14 +1,15 @@
 body {
   margin: 0;
   font-family: system-ui;
-  background: linear-gradient(160deg, #0f172a, #020617);
+  background: #020617;
   color: white;
 }
 
-.auth, .chat {
-  max-width: 420px;
+/* AUTH */
+.auth {
+  max-width: 360px;
   margin: auto;
-  padding: 20px;
+  padding: 40px;
 }
 
 input {
@@ -29,25 +30,74 @@ button {
   background: #6366f1;
   color: white;
   margin-top: 8px;
+  cursor: pointer;
+}
+
+.google {
+  background: #ea4335;
+}
+
+.divider {
+  text-align: center;
+  margin: 12px 0;
+  opacity: 0.6;
+}
+
+/* CHAT */
+.chatLayout {
+  display: flex;
+  height: 100vh;
+}
+
+.contacts {
+  width: 260px;
+  background: #020617;
+  border-right: 1px solid #1e293b;
+  padding: 10px;
+}
+
+.contact {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.contact:hover, .contact.active {
+  background: #1e293b;
+}
+
+.chatArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .msgs {
-  height: 70vh;
+  flex: 1;
+  padding: 16px;
   overflow-y: auto;
 }
 
 .bubble {
-  background: rgba(255,255,255,0.14);
+  background: #1e293b;
   padding: 10px;
-  margin: 6px 0;
-  border-radius: 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  max-width: 60%;
 }
 
-.msgText {
-  color: white;
+.bubble.me {
+  background: #4f46e5;
+  margin-left: auto;
 }
 
 .bar {
   display: flex;
   gap: 8px;
+  padding: 12px;
+}
+
+.empty {
+  margin: auto;
+  opacity: 0.6;
 }
