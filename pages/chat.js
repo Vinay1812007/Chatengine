@@ -8,20 +8,9 @@ import {
   onSnapshot,
   where,
   doc,
-  setDoc,
   updateDoc
 } from "firebase/firestore";
 import { useRouter } from "next/router";
-import { createPeerConnection } from "../lib/webrtc";
-
-/* fallback avatar */
-const FALLBACK =
-  "data:image/svg+xml;utf8," +
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <circle cx='50' cy='50' r='50' fill='%23334155'/>
-    <circle cx='50' cy='38' r='18' fill='%239ca3af'/>
-    <path d='M20 90c6-22 54-22 60 0' fill='%239ca3af'/>
-  </svg>`;
 
 export default function Chat() {
   const router = useRouter();
@@ -33,10 +22,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
-  const pcRef = useRef(null);
-  const localVideo = useRef(null);
-  const remoteVideo = useRef(null);
-  const localStream = useRef(null);
+  const bottomRef = useRef(null);
 
   /* AUTH */
   useEffect(() => {
@@ -52,6 +38,7 @@ export default function Chat() {
   /* CONTACTS */
   useEffect(() => {
     if (!authReady || !myUid) return;
+
     return onSnapshot(query(collection(db, "users")), snap => {
       setContacts(
         snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
@@ -62,14 +49,29 @@ export default function Chat() {
   /* MESSAGES */
   useEffect(() => {
     if (!activeUser || !myUid) return;
+
     const room = [myUid, activeUser.uid].sort().join("_");
 
     return onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
-      snap => {
-        setMessages(
-          snap.docs.map(d => d.data()).sort((a, b) => a.time - b.time)
-        );
+      async snap => {
+        const msgs = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        })).sort((a, b) => a.time - b.time);
+
+        setMessages(msgs);
+
+        // 👀 mark received messages as SEEN
+        for (const m of msgs) {
+          if (m.from !== myUid && m.status !== "seen") {
+            await updateDoc(doc(db, "messages", m.id), {
+              status: "seen"
+            });
+          }
+        }
+
+        setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
       }
     );
   }, [activeUser, myUid]);
@@ -81,91 +83,27 @@ export default function Chat() {
     await addDoc(collection(db, "messages"), {
       room: [myUid, activeUser.uid].sort().join("_"),
       from: myUid,
+      to: activeUser.uid,
       text,
-      time: Date.now()
+      time: Date.now(),
+      status: "sent"
     });
+
     setText("");
   }
 
-  /* ================= CALL LOGIC ================= */
-
-  async function startCall(video = false) {
-    if (!activeUser) return;
-
-    localStream.current = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video
-    });
-
-    localVideo.current.srcObject = localStream.current;
-
-    const callId = [myUid, activeUser.uid].sort().join("_");
-    const callRef = doc(db, "calls", callId);
-
-    pcRef.current = createPeerConnection(
-      (stream) => (remoteVideo.current.srcObject = stream),
-      async (ice) => {
-        await updateDoc(callRef, {
-          ice: ice.toJSON()
-        });
-      }
-    );
-
-    localStream.current.getTracks().forEach(track =>
-      pcRef.current.addTrack(track, localStream.current)
-    );
-
-    const offer = await pcRef.current.createOffer();
-    await pcRef.current.setLocalDescription(offer);
-
-    await setDoc(callRef, {
-      offer,
-      from: myUid,
-      to: activeUser.uid
-    });
-  }
-
-  /* LISTEN FOR CALL */
+  /* UPDATE DELIVERED */
   useEffect(() => {
-    if (!myUid) return;
+    if (!activeUser || !myUid) return;
 
-    return onSnapshot(doc(db, "calls", myUid), async (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-
-      if (data.offer && !pcRef.current) {
-        localStream.current = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: true
+    messages.forEach(async m => {
+      if (m.from === myUid && m.status === "sent") {
+        await updateDoc(doc(db, "messages", m.id), {
+          status: "delivered"
         });
-
-        localVideo.current.srcObject = localStream.current;
-
-        pcRef.current = createPeerConnection(
-          (stream) => (remoteVideo.current.srcObject = stream),
-          async (ice) => {
-            await updateDoc(doc(db, "calls", snap.id), {
-              ice: ice.toJSON()
-            });
-          }
-        );
-
-        localStream.current.getTracks().forEach(track =>
-          pcRef.current.addTrack(track, localStream.current)
-        );
-
-        await pcRef.current.setRemoteDescription(data.offer);
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
-
-        await updateDoc(doc(db, "calls", snap.id), { answer });
-      }
-
-      if (data.answer && pcRef.current) {
-        await pcRef.current.setRemoteDescription(data.answer);
       }
     });
-  }, [myUid]);
+  }, [messages, activeUser, myUid]);
 
   async function logout() {
     await signOut(auth);
@@ -176,50 +114,64 @@ export default function Chat() {
 
   return (
     <div className="chatLayout">
+      {/* CONTACTS */}
       <div className="contacts">
+        <h3>Contacts</h3>
         {contacts.map(u => (
           <div
             key={u.uid}
             className="contact"
             onClick={() => setActiveUser(u)}
           >
-            <img src={u.photo || FALLBACK} className="avatar" />
             {u.email}
           </div>
         ))}
       </div>
 
+      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
           {activeUser?.email}
-          <div>
-            <button onClick={() => startCall(false)}>📞</button>
-            <button onClick={() => startCall(true)}>🎥</button>
-            <button onClick={logout}>Logout</button>
-          </div>
+          <button onClick={logout}>Logout</button>
         </div>
 
-        <div style={{ display: "flex", gap: 10, padding: 10 }}>
-          <video ref={localVideo} autoPlay muted width="120" />
-          <video ref={remoteVideo} autoPlay width="200" />
-        </div>
-
-        <div className="msgs">
-          {messages.map((m, i) => (
-            <div key={i} className={`bubble ${m.from === myUid ? "me" : ""}`}>
-              {m.text}
+        {!activeUser ? (
+          <div className="empty">Select a contact</div>
+        ) : (
+          <>
+            <div className="msgs">
+              {messages.map(m => (
+                <div
+                  key={m.id}
+                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
+                >
+                  <div className="bubble">
+                    {m.text}
+                    {m.from === myUid && (
+                      <span style={{ marginLeft: 6, fontSize: 12 }}>
+                        {m.status === "sent" && "✓"}
+                        {m.status === "delivered" && "✓✓"}
+                        {m.status === "seen" && (
+                          <span style={{ color: "#22c55e" }}>✓✓</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div ref={bottomRef} />
             </div>
-          ))}
-        </div>
 
-        <div className="bar">
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Type message…"
-          />
-          <button onClick={send}>Send</button>
-        </div>
+            <div className="bar">
+              <input
+                value={text}
+                onChange={e => setText(e.target.value)}
+                placeholder="Type message…"
+              />
+              <button onClick={send}>Send</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
