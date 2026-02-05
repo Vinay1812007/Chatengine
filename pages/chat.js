@@ -8,12 +8,14 @@ import {
   onSnapshot,
   where,
   doc,
+  setDoc,
+  deleteDoc,
   updateDoc,
   serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 
-/* SVG fallback avatar */
+/* Fallback avatar */
 const FALLBACK_AVATAR =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -31,63 +33,33 @@ export default function Chat() {
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [typing, setTyping] = useState(false);
 
   const bottomRef = useRef(null);
 
-  /* =========================
-     AUTH + ONLINE STATUS
-  ==========================*/
+  /* ================= AUTH ================= */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        router.replace("/");
-        return;
-      }
-
-      setUser(u);
+    return onAuthStateChanged(auth, (u) => {
+      if (!u) router.replace("/");
+      else setUser(u);
       setAuthReady(true);
-
-      const userRef = doc(db, "users", u.uid);
-
-      // 🟢 set online
-      await updateDoc(userRef, {
-        online: true,
-        lastSeen: serverTimestamp()
-      });
-
-      // 🔴 set offline on tab close
-      window.addEventListener("beforeunload", async () => {
-        await updateDoc(userRef, {
-          online: false,
-          lastSeen: serverTimestamp()
-        });
-      });
     });
-
-    return () => unsub();
   }, [router]);
 
   const myUid = user?.uid;
 
-  /* =========================
-     CONTACTS (REAL-TIME)
-  ==========================*/
+  /* ================= CONTACTS ================= */
   useEffect(() => {
     if (!authReady || !myUid) return;
 
-    const q = query(collection(db, "users"));
-    return onSnapshot(q, (snap) => {
+    return onSnapshot(query(collection(db, "users")), snap => {
       setContacts(
-        snap.docs
-          .map(d => d.data())
-          .filter(u => u.uid !== myUid)
+        snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
       );
     });
   }, [authReady, myUid]);
 
-  /* =========================
-     MESSAGES
-  ==========================*/
+  /* ================= MESSAGES ================= */
   useEffect(() => {
     if (!activeUser || !myUid) return;
 
@@ -104,26 +76,55 @@ export default function Chat() {
     );
   }, [activeUser, myUid]);
 
+  /* ================= TYPING LISTENER ================= */
+  useEffect(() => {
+    if (!activeUser || !myUid) return;
+
+    const typingRef = doc(db, "typing", activeUser.uid + "_" + myUid);
+
+    return onSnapshot(typingRef, snap => {
+      setTyping(snap.exists() && snap.data().isTyping);
+    });
+  }, [activeUser, myUid]);
+
+  /* ================= SEND MESSAGE ================= */
   async function send() {
     if (!text.trim() || !activeUser) return;
 
+    const room = [myUid, activeUser.uid].sort().join("_");
+
     await addDoc(collection(db, "messages"), {
-      room: [myUid, activeUser.uid].sort().join("_"),
+      room,
       from: myUid,
       text,
       time: Date.now()
     });
 
+    await deleteDoc(doc(db, "typing", myUid + "_" + activeUser.uid));
     setText("");
   }
 
-  async function logout() {
-    if (user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        online: false,
-        lastSeen: serverTimestamp()
+  /* ================= HANDLE TYPING ================= */
+  async function handleTyping(value) {
+    setText(value);
+
+    if (!activeUser) return;
+
+    const ref = doc(db, "typing", myUid + "_" + activeUser.uid);
+
+    if (value.trim()) {
+      await setDoc(ref, {
+        from: myUid,
+        to: activeUser.uid,
+        isTyping: true,
+        time: serverTimestamp()
       });
+    } else {
+      await deleteDoc(ref);
     }
+  }
+
+  async function logout() {
     await signOut(auth);
     router.replace("/");
   }
@@ -141,17 +142,8 @@ export default function Chat() {
             className="contact"
             onClick={() => setActiveUser(u)}
           >
-            <img
-              src={u.photo || FALLBACK_AVATAR}
-              className="avatar"
-              referrerPolicy="no-referrer"
-            />
-            <div>
-              <div>{u.email}</div>
-              <small style={{ opacity: 0.7 }}>
-                {u.online ? "🟢 Online" : "Last seen recently"}
-              </small>
-            </div>
+            <img src={u.photo || FALLBACK_AVATAR} className="avatar" />
+            {u.email}
           </div>
         ))}
       </div>
@@ -160,17 +152,13 @@ export default function Chat() {
       <div className="chatArea">
         <div className="chatHeader">
           {activeUser && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <img
-                src={activeUser.photo || FALLBACK_AVATAR}
-                className="avatar"
-              />
-              <div>
-                <div>{activeUser.email}</div>
-                <small style={{ opacity: 0.7 }}>
-                  {activeUser.online ? "🟢 Online" : "Last seen recently"}
+            <div>
+              <div>{activeUser.email}</div>
+              {typing && (
+                <small style={{ color: "#22c55e" }}>
+                  typing…
                 </small>
-              </div>
+              )}
             </div>
           )}
           <button onClick={logout}>Logout</button>
@@ -188,21 +176,3 @@ export default function Chat() {
                 >
                   <div className="bubble">{m.text}</div>
                 </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
-
-            <div className="bar">
-              <input
-                value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="Type message…"
-              />
-              <button onClick={send}>Send</button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
