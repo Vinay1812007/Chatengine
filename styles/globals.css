@@ -4,38 +4,36 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: #020617;
   color: #e5e7eb;
-  height: 100vh;
+  font-family: system-ui, sans-serif;
 }
 
-/* ===== LAYOUT ===== */
+/* LAYOUT */
 .chatLayout {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 260px 1fr; /* 👈 CONTACT BAR SIZE */
   height: 100vh;
-  overflow: hidden;
 }
 
-/* ===== CONTACTS ===== */
+/* CONTACTS */
 .contacts {
-  background: #020617;
-  border-right: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, #020617, #020617);
   padding: 12px;
   overflow-y: auto;
 }
 
 .contacts h3 {
-  margin: 8px 0 12px;
+  margin: 8px 0 14px;
 }
 
 .contact {
   display: flex;
   gap: 10px;
   padding: 10px;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .contact:hover {
@@ -43,16 +41,30 @@ body {
 }
 
 .contact.active {
-  background: rgba(99,102,241,0.35);
+  background: #2a2e6a;
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
 }
 
-/* ===== CHAT AREA ===== */
+.contactText .email {
+  font-size: 14px;
+}
+
+.on {
+  color: #22c55e;
+  font-size: 12px;
+}
+
+.off {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+/* CHAT */
 .chatArea {
   display: flex;
   flex-direction: column;
@@ -63,31 +75,25 @@ body {
   );
 }
 
-/* ===== HEADER ===== */
+/* HEADER */
 .chatHeader {
+  padding: 14px 16px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: rgba(15,23,42,0.85);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.callBtns {
-  display: flex;
-  gap: 8px;
+  background: rgba(15,23,42,0.9);
 }
 
 .callBtns button {
-  background: rgba(255,255,255,0.12);
+  margin-left: 6px;
   border: none;
-  border-radius: 10px;
+  background: rgba(255,255,255,0.12);
   padding: 6px 10px;
-  cursor: pointer;
+  border-radius: 10px;
   color: white;
+  cursor: pointer;
 }
 
-/* ===== MESSAGES ===== */
+/* MESSAGES */
 .msgs {
   flex: 1;
   padding: 16px;
@@ -110,27 +116,42 @@ body {
   background: #1e293b;
 }
 
+/* SENT */
 .msgRow.me .bubble {
   background: linear-gradient(135deg, #38bdf8, #8b5cf6);
 }
 
-/* ===== INPUT BAR ===== */
+/* MESSAGE ANIMATION */
+.animate {
+  animation: pop 0.18s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* INPUT BAR */
 .bar {
   display: flex;
   gap: 10px;
   padding: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  background: rgba(15,23,42,0.9);
+  background: rgba(15,23,42,0.95);
 }
 
 .bar input {
   flex: 1;
-  border: none;
-  border-radius: 12px;
   padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
   background: rgba(255,255,255,0.08);
   color: white;
-  outline: none;
 }
 
 .bar button {
@@ -139,24 +160,10 @@ body {
   padding: 10px 14px;
   background: #6366f1;
   color: white;
-  cursor: pointer;
 }
 
-/* ===== EMPTY ===== */
+/* EMPTY */
 .empty {
   margin: auto;
   opacity: 0.6;
-}
-
-/* ===== CALL MODAL ===== */
-.callModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  z-index: 999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
 }
