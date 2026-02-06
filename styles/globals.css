@@ -1,32 +1,39 @@
+/* ===== RESET ===== */
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden; /* 🔴 CRITICAL */
+  font-family: system-ui, sans-serif;
   background: #020617;
   color: #e5e7eb;
-  font-family: system-ui, sans-serif;
 }
 
-/* LAYOUT */
+/* ===== MAIN LAYOUT ===== */
 .chatLayout {
   display: grid;
-  grid-template-columns: 260px 1fr; /* 👈 CONTACT BAR SIZE */
-  height: 100vh;
+  grid-template-columns: 260px 1fr;
+  height: 100vh; /* 🔴 LOCK HEIGHT */
 }
 
-/* CONTACTS */
+/* ================= CONTACTS ================= */
 .contacts {
-  background: linear-gradient(180deg, #020617, #020617);
+  height: 100vh;              /* 🔴 FULL HEIGHT */
+  overflow-y: auto;           /* 🔴 OWN SCROLL */
+  background: #020617;
   padding: 12px;
-  overflow-y: auto;
+  border-right: 1px solid rgba(255,255,255,0.08);
 }
 
 .contacts h3 {
   margin: 8px 0 14px;
 }
 
+/* CONTACT ITEM */
 .contact {
   display: flex;
   gap: 10px;
@@ -64,10 +71,11 @@ body {
   font-size: 12px;
 }
 
-/* CHAT */
+/* ================= CHAT ================= */
 .chatArea {
   display: flex;
   flex-direction: column;
+  height: 100vh; /* 🔴 FULL HEIGHT */
   background: radial-gradient(
     at top left,
     #1e293b,
@@ -75,14 +83,19 @@ body {
   );
 }
 
-/* HEADER */
+/* HEADER FIXED */
 .chatHeader {
+  flex-shrink: 0; /* 🔴 DO NOT SCROLL */
   padding: 14px 16px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   background: rgba(15,23,42,0.9);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  z-index: 2;
 }
 
+/* CALL BUTTONS */
 .callBtns button {
   margin-left: 6px;
   border: none;
@@ -93,13 +106,14 @@ body {
   cursor: pointer;
 }
 
-/* MESSAGES */
+/* ================= MESSAGES SCROLL AREA ================= */
 .msgs {
-  flex: 1;
+  flex: 1;                    /* 🔴 TAKE REMAINING SPACE */
+  overflow-y: auto;           /* 🔴 OWN SCROLL */
   padding: 16px;
-  overflow-y: auto;
 }
 
+/* MESSAGE ROW */
 .msgRow {
   display: flex;
   margin-bottom: 10px;
@@ -109,23 +123,20 @@ body {
   justify-content: flex-end;
 }
 
+/* MESSAGE BUBBLE */
 .bubble {
   max-width: 65%;
   padding: 10px 14px;
   border-radius: 16px;
   background: #1e293b;
+  animation: pop 0.18s ease-out;
 }
 
-/* SENT */
 .msgRow.me .bubble {
   background: linear-gradient(135deg, #38bdf8, #8b5cf6);
 }
 
 /* MESSAGE ANIMATION */
-.animate {
-  animation: pop 0.18s ease-out;
-}
-
 @keyframes pop {
   from {
     transform: scale(0.9);
@@ -137,12 +148,14 @@ body {
   }
 }
 
-/* INPUT BAR */
+/* ================= INPUT BAR ================= */
 .bar {
+  flex-shrink: 0; /* 🔴 FIXED */
   display: flex;
   gap: 10px;
   padding: 12px;
   background: rgba(15,23,42,0.95);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 
 .bar input {
@@ -152,6 +165,7 @@ body {
   border: none;
   background: rgba(255,255,255,0.08);
   color: white;
+  outline: none;
 }
 
 .bar button {
@@ -160,9 +174,10 @@ body {
   padding: 10px 14px;
   background: #6366f1;
   color: white;
+  cursor: pointer;
 }
 
-/* EMPTY */
+/* EMPTY STATE */
 .empty {
   margin: auto;
   opacity: 0.6;
