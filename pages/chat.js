@@ -1,47 +1,32 @@
 import Head from "next/head";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/router";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   addDoc,
-  query,
   onSnapshot,
+  query,
   where,
   doc,
   setDoc,
-  updateDoc,
-  serverTimestamp
+  orderBy
 } from "firebase/firestore";
-import { useRouter } from "next/router";
-
-const FALLBACK =
-  "data:image/svg+xml;utf8," +
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <circle cx='50' cy='50' r='50' fill='%23212121'/>
-    <circle cx='50' cy='38' r='16' fill='%239ca3af'/>
-    <path d='M22 88c6-20 50-20 56 0' fill='%239ca3af'/>
-  </svg>`;
 
 export default function Chat() {
   const router = useRouter();
-  const bottomRef = useRef(null);
-  const unsubRef = useRef(null);
-
   const [user, setUser] = useState(null);
   const [contacts, setContacts] = useState([]);
-  const [activeUser, setActiveUser] = useState(null);
+  const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
-  const [contactSearch, setContactSearch] = useState("");
-  const [chatSearch, setChatSearch] = useState("");
+  const bottomRef = useRef(null);
 
-  const myUid = user?.uid;
-
-  /* AUTH + ENSURE USER DOC EXISTS (CONTACT SYNC FIX) */
+  // Auth
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    return onAuthStateChanged(auth, async u => {
       if (!u) {
         router.replace("/");
         return;
@@ -63,48 +48,37 @@ export default function Chat() {
     });
   }, []);
 
-  /* CONTACTS SYNC */
+  // Contacts
   useEffect(() => {
-    if (!myUid) return;
-    return onSnapshot(collection(db, "users"), (snap) => {
-      setContacts(
-        snap.docs
-          .map(d => d.data())
-          .filter(u => u.uid !== myUid)
-      );
+    if (!user) return;
+    return onSnapshot(collection(db, "users"), snap => {
+      setContacts(snap.docs.map(d => d.data()).filter(u => u.uid !== user.uid));
     });
-  }, [myUid]);
+  }, [user]);
 
-  /* OPEN CHAT SAFELY */
-  function openChat(u) {
-    if (u.uid === activeUser?.uid) return;
+  // Messages
+  useEffect(() => {
+    if (!user || !active) return;
 
-    if (unsubRef.current) unsubRef.current();
-
-    setActiveUser(u);
-    setMessages([]);
-
-    const room = [myUid, u.uid].sort().join("_");
-
-    unsubRef.current = onSnapshot(
-      query(collection(db, "messages"), where("room", "==", room)),
-      (snap) => {
-        const msgs = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => a.time - b.time);
-        setMessages(msgs);
-        setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
-      }
+    const q = query(
+      collection(db, "messages"),
+      where("chatId", "==", [user.uid, active.uid].sort().join("_")),
+      orderBy("time")
     );
-  }
 
-  /* SEND MESSAGE */
+    return onSnapshot(q, snap => {
+      setMessages(snap.docs.map(d => d.data()));
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
+  }, [active, user]);
+
   async function send() {
-    if (!text.trim() || !activeUser) return;
+    if (!text.trim()) return;
 
     await addDoc(collection(db, "messages"), {
-      room: [myUid, activeUser.uid].sort().join("_"),
-      from: myUid,
+      chatId: [user.uid, active.uid].sort().join("_"),
+      from: user.uid,
+      to: active.uid,
       text,
       time: Date.now()
     });
@@ -115,91 +89,55 @@ export default function Chat() {
   return (
     <>
       <Head>
-        <title>ChatEngine</title>
+        <title>Chat</title>
       </Head>
 
       <div className="chatLayout">
-        {/* CONTACTS */}
         <aside className="contacts glass">
-          <input
-            className="search"
-            placeholder="Search contacts"
-            value={contactSearch}
-            onChange={(e) => setContactSearch(e.target.value)}
-          />
-
-          {contacts
-            .filter(c =>
-              c.email.toLowerCase().includes(contactSearch.toLowerCase())
-            )
-            .map(u => (
-              <div
-                key={u.uid}
-                className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
-                onClick={() => openChat(u)}
-              >
-                <img src={u.photo || FALLBACK} className="avatar" />
-                <div>
-                  <div className="email">{u.email}</div>
-                  <small>{u.online ? "Online" : "Offline"}</small>
-                </div>
+          <h3>Contacts</h3>
+          {contacts.map(c => (
+            <div
+              key={c.uid}
+              className={`contact ${active?.uid === c.uid ? "active" : ""}`}
+              onClick={() => setActive(c)}
+            >
+              <img src={c.photo || "/avatar.png"} />
+              <div>
+                <div>{c.email}</div>
+                <small>{c.online ? "Online" : "Offline"}</small>
               </div>
-            ))}
+            </div>
+          ))}
         </aside>
 
-        {/* CHAT */}
-        <main className="chatArea">
-          <header className="chatHeader glass">
-            <div>
-              <div>{activeUser?.email || "Select a contact"}</div>
-              {activeUser && (
-                <small>{activeUser.online ? "Online" : "Last seen"}</small>
-              )}
-            </div>
-
-            <div className="callBtns">
-              {activeUser && <button>📞</button>}
-              {activeUser && <button>🎥</button>}
-              <button onClick={() => router.push("/settings")}>⚙️</button>
-            </div>
-          </header>
-
-          {!activeUser ? (
+        <main className="chat glass">
+          {!active ? (
             <div className="empty">Select a contact</div>
           ) : (
             <>
-              <input
-                className="search chatSearch"
-                placeholder="Search in chat"
-                value={chatSearch}
-                onChange={(e) => setChatSearch(e.target.value)}
-              />
+              <header>{active.email}</header>
 
-              <div className="msgs">
-                {messages
-                  .filter(m =>
-                    m.text.toLowerCase().includes(chatSearch.toLowerCase())
-                  )
-                  .map(m => (
-                    <div
-                      key={m.id}
-                      className={`msgRow ${m.from === myUid ? "me" : ""}`}
-                    >
-                      <div className="bubble glass">{m.text}</div>
-                    </div>
-                  ))}
+              <div className="messages">
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`msg ${m.from === user.uid ? "me" : ""}`}
+                  >
+                    {m.text}
+                  </div>
+                ))}
                 <div ref={bottomRef} />
               </div>
 
-              <div className="bar glass">
+              <footer>
                 <input
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && send()}
-                  placeholder="Type a message"
+                  onChange={e => setText(e.target.value)}
+                  placeholder="Type message…"
+                  onKeyDown={e => e.key === "Enter" && send()}
                 />
                 <button onClick={send}>Send</button>
-              </div>
+              </footer>
             </>
           )}
         </main>
