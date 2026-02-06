@@ -1,5 +1,6 @@
-/* styles/globals.css
+/* styles/globals.css (full file)
    Glassmorphism iOS-26 style + layout for ChatEngine
+   Includes header buttons and settings drawer styles
 */
 
 /* Reset */
@@ -112,8 +113,42 @@ body {
   background: linear-gradient(180deg, rgba(3,7,17,0.65), rgba(6,8,15,0.55));
 }
 
+.header-left {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.header-back {
+  background: rgba(255,255,255,0.04);
+  border: none;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.header-profile {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.header-profile img {
+  width:36px; height:36px; border-radius:50%; object-fit:cover;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* title/sub */
 .chat header .title { font-weight:700; }
 .chat header .sub { font-size: 12px; color: #aab6c6; }
+
+/* header right controls */
+.header-controls { display:flex; gap:8px; align-items:center; }
+.header-btn {
+  background: rgba(255,255,255,0.06);
+  border: none;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
 
 /* chat search inside header area */
 .chat-search {
@@ -211,6 +246,48 @@ body {
   100% { transform: translateY(0); opacity: 0.6; }
 }
 
+/* ---------- SETTINGS DRAWER (Chat Settings) ---------- */
+.settings-drawer {
+  position: fixed;
+  top: 0;
+  right: -420px; /* off screen */
+  width: 380px;
+  height: 100vh;
+  background: rgba(12,14,20,0.98);
+  box-shadow: -24px 0 40px rgba(0,0,0,0.6);
+  transition: right 220ms ease;
+  z-index: 120;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.settings-drawer.open {
+  right: 0;
+}
+
+.settings-drawer h3 { margin-top:0; }
+
+.setting-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+/* app settings quick overlay */
+.app-settings-overlay {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 360px;
+  background: rgba(18,20,26,0.95);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  z-index: 130;
+}
+
 /* responsive */
 @media (max-width: 900px) {
   .chatLayout { grid-template-columns: 1fr; }
@@ -218,14 +295,8 @@ body {
   .contacts.show { left: 0; }
   .chat header .title { font-size: 14px; }
   .chat-search { display: none; }
+  .settings-drawer { width: 100%; }
 }
 
-/* simple login / settings classes */
-.login, .settings {
-  height: 100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-}
-.login button, .settings button { padding: 12px 18px; border-radius: 12px; border:none; background:#6366f1; color:white; cursor:pointer; margin-top:12px; }
+/* small helpers */
+.hidden { display:none; }
