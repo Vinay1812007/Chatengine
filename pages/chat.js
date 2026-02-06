@@ -1,6 +1,7 @@
+import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   addDoc,
@@ -12,14 +13,6 @@ import {
   serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/router";
-
-const FALLBACK =
-  "data:image/svg+xml;utf8," +
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <circle cx='50' cy='50' r='50' fill='%23212b45'/>
-    <circle cx='50' cy='38' r='16' fill='%239ca3af'/>
-    <path d='M22 88c6-20 50-20 56 0' fill='%239ca3af'/>
-  </svg>`;
 
 export default function Chat() {
   const router = useRouter();
@@ -57,14 +50,11 @@ export default function Chat() {
     });
   }, [myUid]);
 
-  /* OPEN CHAT (SAFE SWITCH) */
+  /* OPEN CHAT SAFELY */
   function openChat(u) {
     if (u.uid === activeUser?.uid) return;
 
-    if (msgUnsub.current) {
-      msgUnsub.current();
-      msgUnsub.current = null;
-    }
+    if (msgUnsub.current) msgUnsub.current();
 
     setActiveUser(u);
     setMessages([]);
@@ -78,7 +68,6 @@ export default function Chat() {
         const msgs = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => a.time - b.time);
-
         setMessages(msgs);
         setLoadingChat(false);
         setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
@@ -89,87 +78,100 @@ export default function Chat() {
   /* SEND MESSAGE */
   async function send() {
     if (!text.trim() || !activeUser) return;
-
     await addDoc(collection(db, "messages"), {
       room: [myUid, activeUser.uid].sort().join("_"),
       from: myUid,
       text,
       time: Date.now()
     });
-
     setText("");
   }
 
-  async function logout() {
-    await signOut(auth);
-    router.replace("/");
-  }
-
   return (
-    <div className="chatLayout">
-      {/* CONTACTS */}
-      <aside className="contacts">
-        <h3>Contacts</h3>
-        {contacts.map(u => (
-          <div
-            key={u.uid}
-            className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
-            onClick={() => openChat(u)}
-          >
-            <img src={u.photo || FALLBACK} className="avatar" />
-            <div className="contactText">
-              <div className="email">{u.email}</div>
-              <span className={u.online ? "on" : "off"}>
-                {u.online ? "Online" : "Offline"}
-              </span>
+    <>
+      <Head>
+        <title>Chatgram</title>
+      </Head>
+
+      <div className="chatLayout">
+        {/* CONTACTS */}
+        <aside className="contacts">
+          <h3>Contacts</h3>
+          {contacts.map(u => (
+            <div
+              key={u.uid}
+              className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
+              onClick={() => openChat(u)}
+            >
+              <img src={u.photo} className="avatar" />
+              <div className="contactText">
+                <div className="email">{u.email}</div>
+                <span className={u.online ? "on" : "off"}>
+                  {u.online ? "Online" : "Offline"}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
-      </aside>
+          ))}
+        </aside>
 
-      {/* CHAT */}
-      <main className="chatArea">
-        <header className="chatHeader">
-          <div>{activeUser?.email || "Select a contact"}</div>
-          <div className="callBtns">
-            <button disabled={!activeUser}>📞</button>
-            <button disabled={!activeUser}>🎥</button>
-            <button onClick={logout}>Logout</button>
-          </div>
-        </header>
+        {/* CHAT */}
+        <main className="chatArea">
+          <header className="chatHeader">
+            <div>
+              <div>{activeUser?.email || "Select a contact"}</div>
+              {activeUser && (
+                <small>
+                  {activeUser.online
+                    ? "Online"
+                    : "Last seen today"}
+                </small>
+              )}
+            </div>
 
-        {!activeUser ? (
-          <div className="empty">Select a contact</div>
-        ) : loadingChat ? (
-          <div className="empty">Loading chat…</div>
-        ) : (
-          <>
-            <div className="msgs">
-              {messages.map(m => (
-                <div
-                  key={m.id}
-                  className={`msgRow ${m.from === myUid ? "me" : ""}`}
-                >
-                  <div className="bubble animate">
-                    {m.text}
+            <div className="callBtns">
+              {activeUser && (
+                <>
+                  <button title="Voice Call">📞</button>
+                  <button title="Video Call">🎥</button>
+                </>
+              )}
+              <button title="Settings" onClick={() => router.push("/settings")}>
+                ⚙️
+              </button>
+            </div>
+          </header>
+
+          {!activeUser ? (
+            <div className="empty">Select a contact</div>
+          ) : loadingChat ? (
+            <div className="empty">Loading chat…</div>
+          ) : (
+            <>
+              <div className="msgs">
+                {messages.map(m => (
+                  <div
+                    key={m.id}
+                    className={`msgRow ${m.from === myUid ? "me" : ""}`}
+                  >
+                    <div className="bubble">{m.text}</div>
                   </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
 
-            <div className="bar">
-              <input
-                value={text}
-                onChange={e => setText(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && send()}
-                placeholder="Type message…"
-              />
-              <button onClick={send}>Send</button>
-            </div>
-          </>
-        )}
-      </main>
-    </div>
+              <div className="bar">
+                <input
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && send()}
+                  placeholder="Type message…"
+                />
+                <button onClick={send}>Send</button>
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+    </>
   );
 }
