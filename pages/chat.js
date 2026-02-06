@@ -8,9 +8,7 @@ import {
   onSnapshot,
   where,
   doc,
-  setDoc,
   updateDoc,
-  deleteDoc,
   serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/router";
@@ -18,14 +16,15 @@ import { useRouter } from "next/router";
 const FALLBACK =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <circle cx='50' cy='50' r='50' fill='%23334155'/>
-    <circle cx='50' cy='38' r='18' fill='%239ca3af'/>
-    <path d='M20 90c6-22 54-22 60 0' fill='%239ca3af'/>
+    <circle cx='50' cy='50' r='50' fill='%23212b45'/>
+    <circle cx='50' cy='38' r='16' fill='%239ca3af'/>
+    <path d='M22 88c6-20 50-20 56 0' fill='%239ca3af'/>
   </svg>`;
 
 export default function Chat() {
   const router = useRouter();
   const bottomRef = useRef(null);
+  const msgUnsub = useRef(null);
 
   const [user, setUser] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -33,19 +32,13 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
-
-  const msgUnsub = useRef(null);
 
   const myUid = user?.uid;
 
-  /* ================= AUTH ================= */
+  /* AUTH */
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        router.replace("/");
-        return;
-      }
+      if (!u) return router.replace("/");
       setUser(u);
       await updateDoc(doc(db, "users", u.uid), {
         online: true,
@@ -54,7 +47,7 @@ export default function Chat() {
     });
   }, [router]);
 
-  /* ================= CONTACTS ================= */
+  /* CONTACTS */
   useEffect(() => {
     if (!myUid) return;
     return onSnapshot(collection(db, "users"), snap => {
@@ -64,21 +57,20 @@ export default function Chat() {
     });
   }, [myUid]);
 
-  /* ================= SWITCH CONTACT (SAFE) ================= */
-  function openChat(user) {
-    if (user.uid === activeUser?.uid) return;
+  /* OPEN CHAT (SAFE SWITCH) */
+  function openChat(u) {
+    if (u.uid === activeUser?.uid) return;
 
-    // clean old listener
     if (msgUnsub.current) {
       msgUnsub.current();
       msgUnsub.current = null;
     }
 
-    setActiveUser(user);
+    setActiveUser(u);
     setMessages([]);
     setLoadingChat(true);
 
-    const room = [myUid, user.uid].sort().join("_");
+    const room = [myUid, u.uid].sort().join("_");
 
     msgUnsub.current = onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
@@ -94,15 +86,7 @@ export default function Chat() {
     );
   }
 
-  /* ================= INCOMING CALL ================= */
-  useEffect(() => {
-    if (!myUid) return;
-    return onSnapshot(doc(db, "calls", myUid), snap => {
-      setIncomingCall(snap.exists() ? snap.data() : null);
-    });
-  }, [myUid]);
-
-  /* ================= SEND MESSAGE ================= */
+  /* SEND MESSAGE */
   async function send() {
     if (!text.trim() || !activeUser) return;
 
@@ -117,10 +101,6 @@ export default function Chat() {
   }
 
   async function logout() {
-    await updateDoc(doc(db, "users", user.uid), {
-      online: false,
-      lastSeen: serverTimestamp()
-    });
     await signOut(auth);
     router.replace("/");
   }
@@ -128,7 +108,7 @@ export default function Chat() {
   return (
     <div className="chatLayout">
       {/* CONTACTS */}
-      <div className="contacts">
+      <aside className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
           <div
@@ -137,24 +117,26 @@ export default function Chat() {
             onClick={() => openChat(u)}
           >
             <img src={u.photo || FALLBACK} className="avatar" />
-            <div>
-              <div>{u.email}</div>
-              <small>{u.online ? "🟢 Online" : "Offline"}</small>
+            <div className="contactText">
+              <div className="email">{u.email}</div>
+              <span className={u.online ? "on" : "off"}>
+                {u.online ? "Online" : "Offline"}
+              </span>
             </div>
           </div>
         ))}
-      </div>
+      </aside>
 
       {/* CHAT */}
-      <div className="chatArea">
-        <div className="chatHeader">
+      <main className="chatArea">
+        <header className="chatHeader">
           <div>{activeUser?.email || "Select a contact"}</div>
           <div className="callBtns">
             <button disabled={!activeUser}>📞</button>
             <button disabled={!activeUser}>🎥</button>
             <button onClick={logout}>Logout</button>
           </div>
-        </div>
+        </header>
 
         {!activeUser ? (
           <div className="empty">Select a contact</div>
@@ -168,7 +150,9 @@ export default function Chat() {
                   key={m.id}
                   className={`msgRow ${m.from === myUid ? "me" : ""}`}
                 >
-                  <div className="bubble">{m.text}</div>
+                  <div className="bubble animate">
+                    {m.text}
+                  </div>
                 </div>
               ))}
               <div ref={bottomRef} />
@@ -180,27 +164,12 @@ export default function Chat() {
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && send()}
                 placeholder="Type message…"
-                disabled={loadingChat}
               />
-              <button onClick={send} disabled={loadingChat}>
-                Send
-              </button>
+              <button onClick={send}>Send</button>
             </div>
           </>
         )}
-      </div>
-
-      {/* INCOMING CALL UI */}
-      {incomingCall && (
-        <div className="callModal">
-          <h2>Incoming {incomingCall.type} call</h2>
-          <p>{incomingCall.fromEmail}</p>
-          <div style={{ display: "flex", gap: 20 }}>
-            <button style={{ background: "#22c55e" }}>Accept</button>
-            <button style={{ background: "#ef4444" }}>Reject</button>
-          </div>
-        </div>
-      )}
+      </main>
     </div>
   );
 }
