@@ -1,279 +1,207 @@
-/* ================= RESET ================= */
-* {
-  box-sizing: border-box;
+/* styles/globals.css - full glass + theme + responsive drawer + typing + unread badge */
+
+/* RESET */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+/* THEME VARIABLES - defaults for dark */
+:root[data-theme="dark"] {
+  --bg0: #020617;
+  --bg1: rgba(15,23,42,0.75);
+  --card: rgba(30,41,59,0.7);
+  --muted: rgba(255,255,255,0.7);
+  --accent: #6366f1;
+  --glass-border: rgba(255,255,255,0.08);
 }
 
-html,
-body {
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  background: radial-gradient(
-    at top left,
-    #1e293b,
-    #020617
-  );
-  color: #e5e7eb;
+/* light theme mapping */
+:root[data-theme="light"] {
+  --bg0: #f7f8fb;
+  --bg1: rgba(255,255,255,0.6);
+  --card: rgba(255,255,255,0.9);
+  --muted: rgba(0,0,0,0.7);
+  --accent: #4f46e5;
+  --glass-border: rgba(0,0,0,0.06);
 }
 
-/* ================= GLASS BASE ================= */
+/* system falls back to dark */
+:root { background: radial-gradient(at top left, #1e293b, var(--bg0)); color: white; }
+
+/* GLASS utility */
 .glass {
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
 }
 
-/* ================= MAIN LAYOUT ================= */
+/* LAYOUT */
 .chatLayout {
   display: grid;
   grid-template-columns: 360px 1fr;
   height: 100vh;
+  overflow: hidden;
 }
 
-/* ================= CONTACTS ================= */
+/* CONTACTS */
 .contacts {
+  padding: 14px;
   height: 100vh;
   overflow-y: auto;
-  padding: 14px;
-  background: rgba(2, 6, 23, 0.75);
-  backdrop-filter: blur(18px);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg1);
+  border-right: 1px solid var(--glass-border);
 }
 
-.contacts h3 {
-  margin: 10px 0 16px;
-  font-size: 18px;
-  opacity: 0.9;
-}
+.contacts h3 { margin: 8px 0 16px; font-size: 18px; }
 
-/* CONTACT ITEM */
+/* contact */
 .contact {
   display: flex;
   gap: 12px;
   padding: 12px;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.contact:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.contact.active {
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.35),
-    rgba(139, 92, 246, 0.25)
-  );
-}
-
-/* AVATAR */
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* CONTACT TEXT */
-.contactText {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.contactText .email {
-  font-size: 15px;
-}
-
-.on {
-  color: #22c55e;
-  font-size: 13px;
-}
-
-.off {
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-/* ================= CHAT AREA ================= */
-.chatArea {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-/* ================= CHAT HEADER ================= */
-.chatHeader {
-  flex-shrink: 0;
-  padding: 14px 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* CALL & SETTINGS BUTTONS */
-.callBtns button {
-  margin-left: 8px;
-  border: none;
-  padding: 8px 12px;
   border-radius: 12px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.12);
+  transition: background .18s;
+  align-items: center;
+}
+
+.contact:hover { background: rgba(255,255,255,0.02); }
+.contact.active { background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06)); }
+
+.avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+
+/* text */
+.contactText { display:flex; flex-direction: column; }
+.contactText .email { font-size: 15px; }
+.on { color: #22c55e; font-size:13px; }
+.off { color: #9ca3af; font-size:13px; }
+
+/* unread badge glass effect */
+.unreadBadge {
+  margin-left: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
   color: white;
-  transition: background 0.2s;
+  backdrop-filter: blur(6px);
 }
 
-.callBtns button:hover {
-  background: rgba(255, 255, 255, 0.22);
+/* CHAT AREA */
+.chatArea { display:flex; flex-direction:column; height:100vh; }
+
+/* header */
+.chatHeader {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding: 12px 18px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--glass-border);
 }
 
-/* ================= MESSAGES ================= */
+/* call buttons */
+.callBtns button {
+  margin-left: 8px;
+  background: rgba(255,255,255,0.06);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
+
+/* messages area */
 .msgs {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 18px;
+  background-size: cover;
+  background-position: center;
 }
 
-/* MESSAGE ROW */
-.msgRow {
-  display: flex;
-  margin-bottom: 12px;
-}
-
-.msgRow.me {
-  justify-content: flex-end;
-}
-
-/* MESSAGE BUBBLE */
+/* bubble */
+.msgRow { display:flex; margin-bottom:12px; }
+.msgRow.me { justify-content:flex-end; }
 .bubble {
   max-width: 65%;
   padding: 12px 16px;
-  border-radius: 18px;
-  background: rgba(30, 41, 59, 0.75);
-  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  background: var(--card);
+  backdrop-filter: blur(10px);
   animation: pop 0.18s ease-out;
 }
 
-/* MY MESSAGE */
-.msgRow.me .bubble {
-  background: linear-gradient(
-    135deg,
-    rgba(56, 189, 248, 0.75),
-    rgba(139, 92, 246, 0.75)
-  );
-  color: white;
+/* my bubble */
+.msgRow.me .bubble { background: linear-gradient(135deg,#38bdf8,#8b5cf6); color: white; }
+
+/* input bar */
+.bar { display:flex; gap:12px; padding: 14px; background: var(--bg1); border-top:1px solid var(--glass-border); }
+.bar input { flex:1; padding:12px 14px; border-radius:12px; border:none; background: rgba(255,255,255,0.04); color: white; }
+.bar button { background: var(--accent); border:none; padding:10px 16px; border-radius:12px; color:white; cursor:pointer; }
+
+/* empty */
+.empty { margin:auto; opacity:0.7; }
+
+/* settings page */
+.settingsPage { max-width:900px; margin:auto; padding:24px; color:var(--muted); }
+.settingsPage section { margin-bottom:24px; padding:16px; border-radius:12px; background: rgba(255,255,255,0.02); border:1px solid var(--glass-border); }
+
+/* center page */
+.centerPage { height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; }
+
+/* app card */
+.appCard { padding:18px 24px; border-radius:12px; cursor:pointer; background: rgba(255,255,255,0.02); }
+
+/* typing dots animation */
+.typingDots::after {
+  content: '';
+}
+.typingDots {
+  display:inline-block;
+  position:relative;
+  width:36px;
+  height:10px;
+}
+.typingDots::before,
+.typingDots::after,
+.typingDots > span {
+  content: '';
+  position:absolute;
+  top:0;
+  left:0;
+  width:8px;
+  height:8px;
+  background:#cbd5e1;
+  border-radius:50%;
+  transform-origin:center;
+  animation: dots 1s infinite linear;
+}
+.typingDots > span { display:none; } /* not used but keeps structure */
+
+@keyframes dots {
+  0% { transform: translateX(0) scale(0.6); opacity: 0.5; }
+  25% { transform: translateX(10px) scale(1); opacity: 1; }
+  50% { transform: translateX(20px) scale(0.6); opacity: 0.5; }
+  100% { transform: translateX(0) scale(0.6); opacity:0.5; }
 }
 
-/* MESSAGE ANIMATION */
-@keyframes pop {
-  from {
-    transform: scale(0.94);
-    opacity: 0.4;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+/* pop animation */
+@keyframes pop { from { transform:scale(.96); opacity:.5 } to { transform:scale(1); opacity:1 } }
+
+/* responsive drawer for mobile */
+@media (max-width: 768px) {
+  .chatLayout { grid-template-columns: 1fr; }
+  .contacts { position: fixed; left: -100%; top:0; bottom:0; width: 80%; z-index: 50; transition: left .22s ease; }
+  .contacts.open { left: 0; }
+  .chatArea { padding-left:0; }
 }
 
-/* ================= INPUT BAR ================= */
-.bar {
-  flex-shrink: 0;
-  display: flex;
-  gap: 12px;
-  padding: 14px;
+/* small helper glass button */
+button.glass { background: rgba(255,255,255,0.04); border:1px solid var(--glass-border); padding:8px 10px; border-radius:8px; color:inherit; cursor:pointer; }
+button.big { padding:12px 18px; border-radius:12px; font-weight:600; }
 
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(18px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.bar input {
-  flex: 1;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: none;
-  outline: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-}
-
-.bar button {
-  border: none;
-  border-radius: 14px;
-  padding: 12px 18px;
-  background: #6366f1;
-  color: white;
-  cursor: pointer;
-}
-
-/* ================= EMPTY STATE ================= */
-.empty {
-  margin: auto;
-  opacity: 0.6;
-}
-
-/* ================= SETTINGS PAGE ================= */
-.settingsPage {
-  max-width: 720px;
-  margin: auto;
-  padding: 24px;
-}
-
-.settingsPage section {
-  margin-bottom: 32px;
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.settingsPage h2 {
-  margin-top: 0;
-}
-
-.settingsPage p {
-  opacity: 0.8;
-}
-
-.settingsPage button {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  background: #6366f1;
-  color: white;
-  cursor: pointer;
-}
-
-.settingsPage .danger {
-  background: #ef4444;
-}
-
-/* ================= CENTER PAGES ================= */
-.centerPage {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.appCard {
-  margin-top: 20px;
-  padding: 20px 28px;
-  border-radius: 20px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-}
+/* settings specific */
+.settingsPage input { width:100%; padding:10px; border-radius:10px; border:none; background: rgba(255,255,255,0.03); color:inherit; margin-top:8px; }
