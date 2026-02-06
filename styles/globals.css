@@ -7,7 +7,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  overflow: hidden; /* 🔴 CRITICAL */
+  overflow: hidden;
   font-family: system-ui, sans-serif;
   background: #020617;
   color: #e5e7eb;
@@ -16,29 +16,34 @@ body {
 /* ===== MAIN LAYOUT ===== */
 .chatLayout {
   display: grid;
-  grid-template-columns: 260px 1fr;
-  height: 100vh; /* 🔴 LOCK HEIGHT */
+  grid-template-columns: 360px 1fr; /* ✅ CONTACT BAR WIDTH (GREEN LINE) */
+  height: 100vh;
 }
 
 /* ================= CONTACTS ================= */
 .contacts {
-  height: 100vh;              /* 🔴 FULL HEIGHT */
-  overflow-y: auto;           /* 🔴 OWN SCROLL */
-  background: #020617;
-  padding: 12px;
+  height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(
+    180deg,
+    #020617,
+    #020617
+  );
+  padding: 14px;
   border-right: 1px solid rgba(255,255,255,0.08);
 }
 
 .contacts h3 {
-  margin: 8px 0 14px;
+  margin: 8px 0 16px;
+  font-size: 18px;
 }
 
 /* CONTACT ITEM */
 .contact {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 14px;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -52,30 +57,37 @@ body {
 }
 
 .avatar {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
 }
 
+/* CONTACT TEXT */
+.contactText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .contactText .email {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .on {
   color: #22c55e;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .off {
   color: #9ca3af;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* ================= CHAT ================= */
 .chatArea {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* 🔴 FULL HEIGHT */
+  height: 100vh;
   background: radial-gradient(
     at top left,
     #1e293b,
@@ -83,10 +95,10 @@ body {
   );
 }
 
-/* HEADER FIXED */
+/* HEADER */
 .chatHeader {
-  flex-shrink: 0; /* 🔴 DO NOT SCROLL */
-  padding: 14px 16px;
+  flex-shrink: 0;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -97,37 +109,35 @@ body {
 
 /* CALL BUTTONS */
 .callBtns button {
-  margin-left: 6px;
+  margin-left: 8px;
   border: none;
   background: rgba(255,255,255,0.12);
-  padding: 6px 10px;
-  border-radius: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
   color: white;
   cursor: pointer;
 }
 
-/* ================= MESSAGES SCROLL AREA ================= */
+/* ================= MESSAGES ================= */
 .msgs {
-  flex: 1;                    /* 🔴 TAKE REMAINING SPACE */
-  overflow-y: auto;           /* 🔴 OWN SCROLL */
-  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
 }
 
-/* MESSAGE ROW */
 .msgRow {
   display: flex;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .msgRow.me {
   justify-content: flex-end;
 }
 
-/* MESSAGE BUBBLE */
 .bubble {
   max-width: 65%;
-  padding: 10px 14px;
-  border-radius: 16px;
+  padding: 12px 16px;
+  border-radius: 18px;
   background: #1e293b;
   animation: pop 0.18s ease-out;
 }
@@ -140,7 +150,7 @@ body {
 @keyframes pop {
   from {
     transform: scale(0.9);
-    opacity: 0.5;
+    opacity: 0.4;
   }
   to {
     transform: scale(1);
@@ -150,18 +160,18 @@ body {
 
 /* ================= INPUT BAR ================= */
 .bar {
-  flex-shrink: 0; /* 🔴 FIXED */
+  flex-shrink: 0;
   display: flex;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   background: rgba(15,23,42,0.95);
   border-top: 1px solid rgba(255,255,255,0.08);
 }
 
 .bar input {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
   border: none;
   background: rgba(255,255,255,0.08);
   color: white;
@@ -170,8 +180,8 @@ body {
 
 .bar button {
   border: none;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 14px;
+  padding: 12px 18px;
   background: #6366f1;
   color: white;
   cursor: pointer;
