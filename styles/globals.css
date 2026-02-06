@@ -1,39 +1,19 @@
-/* styles/globals.css - full glass + theme + responsive drawer + typing + unread badge */
-
 /* RESET */
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-
-/* THEME VARIABLES - defaults for dark */
-:root[data-theme="dark"] {
-  --bg0: #020617;
-  --bg1: rgba(15,23,42,0.75);
-  --card: rgba(30,41,59,0.7);
-  --muted: rgba(255,255,255,0.7);
-  --accent: #6366f1;
-  --glass-border: rgba(255,255,255,0.08);
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui;
+  background: #000;
+  color: #fff;
 }
 
-/* light theme mapping */
-:root[data-theme="light"] {
-  --bg0: #f7f8fb;
-  --bg1: rgba(255,255,255,0.6);
-  --card: rgba(255,255,255,0.9);
-  --muted: rgba(0,0,0,0.7);
-  --accent: #4f46e5;
-  --glass-border: rgba(0,0,0,0.06);
-}
-
-/* system falls back to dark */
-:root { background: radial-gradient(at top left, #1e293b, var(--bg0)); color: white; }
-
-/* GLASS utility */
+/* GLASS BASE */
 .glass {
-  background: rgba(255,255,255,0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  background: rgba(28, 28, 30, 0.72);
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 /* LAYOUT */
@@ -41,167 +21,117 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
   display: grid;
   grid-template-columns: 360px 1fr;
   height: 100vh;
-  overflow: hidden;
 }
 
 /* CONTACTS */
 .contacts {
-  padding: 14px;
-  height: 100vh;
+  padding: 12px;
   overflow-y: auto;
-  background: var(--bg1);
-  border-right: 1px solid var(--glass-border);
 }
 
-.contacts h3 { margin: 8px 0 16px; font-size: 18px; }
+.search {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.08);
+  color: white;
+  outline: none;
+}
 
-/* contact */
 .contact {
   display: flex;
   gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 14px;
   cursor: pointer;
-  transition: background .18s;
-  align-items: center;
 }
 
-.contact:hover { background: rgba(255,255,255,0.02); }
-.contact.active { background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06)); }
-
-.avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
-
-/* text */
-.contactText { display:flex; flex-direction: column; }
-.contactText .email { font-size: 15px; }
-.on { color: #22c55e; font-size:13px; }
-.off { color: #9ca3af; font-size:13px; }
-
-/* unread badge glass effect */
-.unreadBadge {
-  margin-left: 6px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  color: white;
-  backdrop-filter: blur(6px);
+.contact.active {
+  background: rgba(0,122,255,0.25);
 }
 
-/* CHAT AREA */
-.chatArea { display:flex; flex-direction:column; height:100vh; }
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
 
-/* header */
+/* CHAT */
+.chatArea {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
 .chatHeader {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding: 12px 18px;
-  background: var(--bg1);
-  border-bottom: 1px solid var(--glass-border);
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
 }
 
-/* call buttons */
 .callBtns button {
   margin-left: 8px;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.1);
   border: none;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 10px;
   color: white;
-  cursor: pointer;
 }
 
-/* messages area */
+/* MESSAGES */
 .msgs {
   flex: 1;
+  padding: 14px;
   overflow-y: auto;
-  padding: 18px;
-  background-size: cover;
-  background-position: center;
 }
 
-/* bubble */
-.msgRow { display:flex; margin-bottom:12px; }
-.msgRow.me { justify-content:flex-end; }
+.msgRow {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.msgRow.me {
+  justify-content: flex-end;
+}
+
 .bubble {
-  max-width: 65%;
   padding: 12px 16px;
-  border-radius: 16px;
-  background: var(--card);
-  backdrop-filter: blur(10px);
-  animation: pop 0.18s ease-out;
+  border-radius: 18px;
+  max-width: 65%;
 }
 
-/* my bubble */
-.msgRow.me .bubble { background: linear-gradient(135deg,#38bdf8,#8b5cf6); color: white; }
-
-/* input bar */
-.bar { display:flex; gap:12px; padding: 14px; background: var(--bg1); border-top:1px solid var(--glass-border); }
-.bar input { flex:1; padding:12px 14px; border-radius:12px; border:none; background: rgba(255,255,255,0.04); color: white; }
-.bar button { background: var(--accent); border:none; padding:10px 16px; border-radius:12px; color:white; cursor:pointer; }
-
-/* empty */
-.empty { margin:auto; opacity:0.7; }
-
-/* settings page */
-.settingsPage { max-width:900px; margin:auto; padding:24px; color:var(--muted); }
-.settingsPage section { margin-bottom:24px; padding:16px; border-radius:12px; background: rgba(255,255,255,0.02); border:1px solid var(--glass-border); }
-
-/* center page */
-.centerPage { height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; }
-
-/* app card */
-.appCard { padding:18px 24px; border-radius:12px; cursor:pointer; background: rgba(255,255,255,0.02); }
-
-/* typing dots animation */
-.typingDots::after {
-  content: '';
-}
-.typingDots {
-  display:inline-block;
-  position:relative;
-  width:36px;
-  height:10px;
-}
-.typingDots::before,
-.typingDots::after,
-.typingDots > span {
-  content: '';
-  position:absolute;
-  top:0;
-  left:0;
-  width:8px;
-  height:8px;
-  background:#cbd5e1;
-  border-radius:50%;
-  transform-origin:center;
-  animation: dots 1s infinite linear;
-}
-.typingDots > span { display:none; } /* not used but keeps structure */
-
-@keyframes dots {
-  0% { transform: translateX(0) scale(0.6); opacity: 0.5; }
-  25% { transform: translateX(10px) scale(1); opacity: 1; }
-  50% { transform: translateX(20px) scale(0.6); opacity: 0.5; }
-  100% { transform: translateX(0) scale(0.6); opacity:0.5; }
+.msgRow.me .bubble {
+  background: rgba(0,122,255,0.9);
 }
 
-/* pop animation */
-@keyframes pop { from { transform:scale(.96); opacity:.5 } to { transform:scale(1); opacity:1 } }
-
-/* responsive drawer for mobile */
-@media (max-width: 768px) {
-  .chatLayout { grid-template-columns: 1fr; }
-  .contacts { position: fixed; left: -100%; top:0; bottom:0; width: 80%; z-index: 50; transition: left .22s ease; }
-  .contacts.open { left: 0; }
-  .chatArea { padding-left:0; }
+/* INPUT */
+.bar {
+  padding: 12px;
+  display: flex;
+  gap: 10px;
 }
 
-/* small helper glass button */
-button.glass { background: rgba(255,255,255,0.04); border:1px solid var(--glass-border); padding:8px 10px; border-radius:8px; color:inherit; cursor:pointer; }
-button.big { padding:12px 18px; border-radius:12px; font-weight:600; }
+.bar input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: white;
+}
 
-/* settings specific */
-.settingsPage input { width:100%; padding:10px; border-radius:10px; border:none; background: rgba(255,255,255,0.03); color:inherit; margin-top:8px; }
+.bar button {
+  background: #007aff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: white;
+}
+
+/* EMPTY */
+.empty {
+  margin: auto;
+  opacity: 0.6;
+}
