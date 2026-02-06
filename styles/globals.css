@@ -1,130 +1,178 @@
-* { box-sizing: border-box; }
+/* ===== RESET ===== */
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: radial-gradient(at top left,#1e3a8a,transparent 60%),
-              radial-gradient(at bottom right,#701a75,transparent 60%),
-              #020617;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0f172a;
   color: #e5e7eb;
+  height: 100vh;
 }
 
-.chatLayout { display:flex; height:100vh; }
+/* ===== MAIN LAYOUT ===== */
+.chatLayout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
 
+/* ===== CONTACT LIST ===== */
 .contacts {
-  width:260px;
-  padding:14px;
-  background:rgba(15,23,42,.7);
-  backdrop-filter:blur(20px);
+  background: #020617;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  padding: 12px;
+  overflow-y: auto;
 }
 
 .contact {
-  display:flex;
-  gap:10px;
-  padding:10px;
-  border-radius:14px;
-  cursor:pointer;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
 }
 
-.contact.active { background:rgba(99,102,241,.3); }
-
-.chatArea { flex:1; display:flex; flex-direction:column; }
-
-.chatHeader {
-  display:flex;
-  justify-content:space-between;
-  padding:14px;
-  background:rgba(99,102,241,.3);
+.contact:hover {
+  background: rgba(255,255,255,0.06);
 }
 
-.callBtns { display:flex; gap:8px; }
-
-.msgs { flex:1; padding:18px; overflow:auto; }
-
-.msgRow { display:flex; margin-bottom:8px; }
-.msgRow.me { justify-content:flex-end; }
-
-.bubble {
-  padding:10px 14px;
-  border-radius:16px;
-  background:rgba(30,41,59,.9);
-}
-
-.msgRow.me .bubble {
-  background:linear-gradient(135deg,#38bdf8,#8b5cf6);
-}
-
-.bar {
-  display:flex;
-  gap:10px;
-  padding:14px;
-  background:rgba(15,23,42,.7);
-}
-
-.bar textarea {
-  flex:1;
-  border:none;
-  border-radius:14px;
-  padding:12px;
-  background:rgba(255,255,255,.08);
-  color:white;
-}
-
-button {
-  border:none;
-  border-radius:12px;
-  padding:10px 14px;
-  background:#6366f1;
-  color:white;
-  cursor:pointer;
+.contact.active {
+  background: rgba(99,102,241,0.35);
 }
 
 .avatar {
-  width:36px;
-  height:36px;
-  border-radius:50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
 }
 
+/* ===== CHAT AREA ===== */
+.chatArea {
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(
+    at top left,
+    #1e293b,
+    #020617
+  );
+}
+
+/* ===== HEADER ===== */
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(15,23,42,0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.callBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.callBtns button {
+  background: rgba(255,255,255,0.12);
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* ===== MESSAGES ===== */
+.msgs {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.msgRow {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.msgRow.me {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 65%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #1e293b;
+}
+
+.msgRow.me .bubble {
+  background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+}
+
+/* ===== INPUT BAR ===== */
+.bar {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(15,23,42,0.9);
+}
+
+.bar input,
+.bar textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.08);
+  color: white;
+  outline: none;
+}
+
+.bar button {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #6366f1;
+  color: white;
+  cursor: pointer;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty {
+  margin: auto;
+  opacity: 0.6;
+}
+
+/* ===== CALL MODAL (ISOLATED) ===== */
 .callModal {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.callModal video {
-  width:300px;
-  border-radius:20px;
-}
-
-.callModal .end {
-  position:absolute;
-  bottom:30px;
-  background:red;
-}
-.callScreen {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.9);
+  background: rgba(0,0,0,0.85);
+  z-index: 999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 200;
 }
 
-.callActions {
-  display: flex;
-  gap: 20px;
-  margin-top: 20px;
+.callModal video {
+  width: 70%;
+  max-width: 520px;
+  border-radius: 18px;
+  margin: 8px;
 }
 
-.callActions .accept {
-  background: #22c55e;
+.callModal video:last-child {
+  width: 160px;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
 }
 
-.callActions .reject {
-  background: #ef4444;
+.callModal button {
+  margin-top: 16px;
+  background: red;
 }
