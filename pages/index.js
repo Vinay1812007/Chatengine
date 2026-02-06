@@ -1,3 +1,4 @@
+// pages/index.js
 import Head from "next/head";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
@@ -9,28 +10,32 @@ export default function Home() {
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(user => {
-      if (user) router.replace("/apps");
+      if (user) router.replace("/chat");
     });
     return () => unsub();
   }, []);
 
   async function googleLogin() {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-    router.replace("/apps");
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.replace("/chat");
+    } catch (err) {
+      console.error("Google login failed:", err);
+      alert("Login failed: " + (err.message || err));
+    }
   }
 
   return (
     <>
       <Head>
-        <title>ChatEngine Login</title>
+        <title>ChatEngine — Login</title>
       </Head>
 
       <div className="login glass">
         <h1>ChatEngine</h1>
-        <button onClick={googleLogin}>
-          Continue with Google
-        </button>
+        <p style={{opacity:0.8}}>Sign in with your Google account to continue</p>
+        <button onClick={googleLogin}>Continue with Google</button>
       </div>
     </>
   );
