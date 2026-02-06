@@ -1,20 +1,25 @@
+import Head from "next/head";
+import { useEffect } from "react";
 import { auth } from "../lib/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/router";
 
-export default function Login() {
+export default function Home() {
   const router = useRouter();
 
-  async function login() {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-    router.push("/apps");
-  }
+  useEffect(() => {
+    if (auth.currentUser) router.replace("/apps");
+  }, []);
 
   return (
-    <div className="centerPage">
-      <h1>Welcome</h1>
-      <button onClick={login}>Login with Google</button>
-    </div>
+    <>
+      <Head>
+        <title>Welcome</title>
+      </Head>
+
+      <div className="centerPage">
+        <h1>Welcome</h1>
+        <p>Please login</p>
+      </div>
+    </>
   );
 }
