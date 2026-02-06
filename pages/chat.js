@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 
-/* fallback avatar */
 const FALLBACK =
   "data:image/svg+xml;utf8," +
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -33,8 +32,10 @@ export default function Chat() {
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-
+  const [loadingChat, setLoadingChat] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
+
+  const msgUnsub = useRef(null);
 
   const myUid = user?.uid;
 
@@ -56,40 +57,48 @@ export default function Chat() {
   /* ================= CONTACTS ================= */
   useEffect(() => {
     if (!myUid) return;
-    return onSnapshot(collection(db, "users"), (snap) => {
+    return onSnapshot(collection(db, "users"), snap => {
       setContacts(
         snap.docs.map(d => d.data()).filter(u => u.uid !== myUid)
       );
     });
   }, [myUid]);
 
-  /* ================= MESSAGES ================= */
-  useEffect(() => {
-    if (!activeUser || !myUid) return;
-    const room = [myUid, activeUser.uid].sort().join("_");
+  /* ================= SWITCH CONTACT (SAFE) ================= */
+  function openChat(user) {
+    if (user.uid === activeUser?.uid) return;
 
-    return onSnapshot(
+    // clean old listener
+    if (msgUnsub.current) {
+      msgUnsub.current();
+      msgUnsub.current = null;
+    }
+
+    setActiveUser(user);
+    setMessages([]);
+    setLoadingChat(true);
+
+    const room = [myUid, user.uid].sort().join("_");
+
+    msgUnsub.current = onSnapshot(
       query(collection(db, "messages"), where("room", "==", room)),
-      (snap) => {
+      snap => {
         const msgs = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => a.time - b.time);
 
         setMessages(msgs);
+        setLoadingChat(false);
         setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
       }
     );
-  }, [activeUser, myUid]);
+  }
 
-  /* ================= INCOMING CALL LISTENER ================= */
+  /* ================= INCOMING CALL ================= */
   useEffect(() => {
     if (!myUid) return;
-    return onSnapshot(doc(db, "calls", myUid), (snap) => {
-      if (snap.exists()) {
-        setIncomingCall(snap.data());
-      } else {
-        setIncomingCall(null);
-      }
+    return onSnapshot(doc(db, "calls", myUid), snap => {
+      setIncomingCall(snap.exists() ? snap.data() : null);
     });
   }, [myUid]);
 
@@ -107,32 +116,6 @@ export default function Chat() {
     setText("");
   }
 
-  /* ================= CALL ACTIONS (UI SAFE) ================= */
-  async function startCall(type) {
-    if (!activeUser) return;
-
-    await setDoc(doc(db, "calls", activeUser.uid), {
-      from: myUid,
-      fromEmail: user.email,
-      type,
-      status: "calling",
-      time: serverTimestamp()
-    });
-  }
-
-  async function acceptCall() {
-    await updateDoc(doc(db, "calls", myUid), {
-      status: "accepted"
-    });
-    alert("Call accepted (media wiring next)");
-    setIncomingCall(null);
-  }
-
-  async function rejectCall() {
-    await deleteDoc(doc(db, "calls", myUid));
-    setIncomingCall(null);
-  }
-
   async function logout() {
     await updateDoc(doc(db, "users", user.uid), {
       online: false,
@@ -144,14 +127,14 @@ export default function Chat() {
 
   return (
     <div className="chatLayout">
-      {/* CONTACT LIST */}
+      {/* CONTACTS */}
       <div className="contacts">
         <h3>Contacts</h3>
         {contacts.map(u => (
           <div
             key={u.uid}
             className={`contact ${activeUser?.uid === u.uid ? "active" : ""}`}
-            onClick={() => setActiveUser(u)}
+            onClick={() => openChat(u)}
           >
             <img src={u.photo || FALLBACK} className="avatar" />
             <div>
@@ -162,19 +145,21 @@ export default function Chat() {
         ))}
       </div>
 
-      {/* CHAT AREA */}
+      {/* CHAT */}
       <div className="chatArea">
         <div className="chatHeader">
           <div>{activeUser?.email || "Select a contact"}</div>
           <div className="callBtns">
-            <button onClick={() => startCall("audio")}>📞</button>
-            <button onClick={() => startCall("video")}>🎥</button>
+            <button disabled={!activeUser}>📞</button>
+            <button disabled={!activeUser}>🎥</button>
             <button onClick={logout}>Logout</button>
           </div>
         </div>
 
         {!activeUser ? (
           <div className="empty">Select a contact</div>
+        ) : loadingChat ? (
+          <div className="empty">Loading chat…</div>
         ) : (
           <>
             <div className="msgs">
@@ -195,8 +180,11 @@ export default function Chat() {
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && send()}
                 placeholder="Type message…"
+                disabled={loadingChat}
               />
-              <button onClick={send}>Send</button>
+              <button onClick={send} disabled={loadingChat}>
+                Send
+              </button>
             </div>
           </>
         )}
@@ -208,12 +196,8 @@ export default function Chat() {
           <h2>Incoming {incomingCall.type} call</h2>
           <p>{incomingCall.fromEmail}</p>
           <div style={{ display: "flex", gap: 20 }}>
-            <button onClick={acceptCall} style={{ background: "#22c55e" }}>
-              Accept
-            </button>
-            <button onClick={rejectCall} style={{ background: "#ef4444" }}>
-              Reject
-            </button>
+            <button style={{ background: "#22c55e" }}>Accept</button>
+            <button style={{ background: "#ef4444" }}>Reject</button>
           </div>
         </div>
       )}
