@@ -1,44 +1,20 @@
-import { auth, db } from "../lib/firebase";
+import { auth } from "../lib/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
-import { useState } from "react";
 
-export default function Index() {
+export default function Login() {
   const router = useRouter();
-  const [error, setError] = useState("");
 
-  async function googleLogin() {
-    try {
-      const provider = new GoogleAuthProvider();
-      const res = await signInWithPopup(auth, provider);
-
-      await setDoc(
-        doc(db, "users", res.user.uid),
-        {
-          uid: res.user.uid,
-          email: res.user.email,
-          name: res.user.displayName,
-          photo: res.user.photoURL || ""
-        },
-        { merge: true }
-      );
-
-      router.push("/chat");
-    } catch (e) {
-      setError(e.message);
-    }
+  async function login() {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    router.push("/apps");
   }
 
   return (
-    <div className="auth">
-      <h1>ChatEngine</h1>
-
-      {error && <div style={{ color: "red" }}>{error}</div>}
-
-      <button className="google" onClick={googleLogin}>
-        Continue with Google
-      </button>
+    <div className="centerPage">
+      <h1>Welcome</h1>
+      <button onClick={login}>Login with Google</button>
     </div>
   );
 }
